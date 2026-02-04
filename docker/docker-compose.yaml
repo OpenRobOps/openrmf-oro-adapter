@@ -1,0 +1,42 @@
+version: "3.8"
+services:
+  oro_fleet_adapter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: oro_fleet_adapter
+    hostname: oro_fleet_adapter
+    network_mode: host
+    volumes:
+      - ..:/home/docker/dev_ws/src
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    tty: true
+    stdin_open: true
+    entrypoint: /bin/bash
+    privileged: true
+    environment:
+      - DISPLAY=${DISPLAY}
+      - LIBGL_ALWAYS_SOFTWARE=1
+      - QT_QPA_PLATFORM=xcb
+      - ROS_DOMAIN_ID=1
+  
+  open_rmf_backend:
+    image: ghcr.io/open-rmf/rmf-web/api-server:jazzy-nightly
+    hostname: open_rmf_backend
+    network_mode: host
+    ports:
+      - "8000:8000"
+    environment:
+      - ROS_DOMAIN_ID=1
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+    tty: true
+    stdin_open: true
+  
+  open_rmf_frontend:
+    image: ghcr.io/open-rmf/rmf-web/demo-dashboard:jazzy-nightly
+    hostname: open_rmf_frontend
+    network_mode: host
+    ports:
+      - "3000:3000"
+    tty: true
+    stdin_open: true
