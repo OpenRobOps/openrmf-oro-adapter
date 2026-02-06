@@ -14,15 +14,29 @@ services:
     stdin_open: true
     entrypoint: /bin/bash
     privileged: true
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu, graphics, display]
     environment:
       - DISPLAY=${DISPLAY}
-      - LIBGL_ALWAYS_SOFTWARE=1
       - QT_QPA_PLATFORM=xcb
+
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      # NOTE: Keep this COMMENTED OUT if you want to use the GPU.
+      # If the GPU fails, uncomment this to force CPU rendering as a fallback.
+      # - LIBGL_ALWAYS_SOFTWARE=1
+
       - ROS_DOMAIN_ID=1
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
   
-  open_rmf_backend:
+  api_server:
     image: ghcr.io/open-rmf/rmf-web/api-server:jazzy-nightly
-    hostname: open_rmf_backend
+    hostname: open_rmf_api_server
     network_mode: host
     ports:
       - "8000:8000"
@@ -32,9 +46,9 @@ services:
     tty: true
     stdin_open: true
   
-  open_rmf_frontend:
+  dashboard:
     image: ghcr.io/open-rmf/rmf-web/demo-dashboard:jazzy-nightly
-    hostname: open_rmf_frontend
+    hostname: open_rmf_dashboard
     network_mode: host
     ports:
       - "3000:3000"
