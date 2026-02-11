@@ -54,3 +54,15 @@ services:
       - "3000:3000"
     tty: true
     stdin_open: true
+
+  mock_api:
+    image: mockoon/cli:latest
+    container_name: robots-mock-api
+    ports:
+      - "3001:3000"
+    environment:
+      - TZ=America/Bogota
+    restart: unless-stopped
+    volumes:
+      - ../mock_api_server/mock.json:/data/mock.json:ro
+    command: ["-d", "/data/mock.json", "-p", "3000"]

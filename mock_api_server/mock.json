@@ -1,0 +1,534 @@
+{
+  "uuid": "5e547bb5-945e-4ec3-81ac-f20ddd90b3f3",
+  "lastMigration": 33,
+  "name": "Inorbit",
+  "endpointPrefix": "",
+  "latency": 0,
+  "port": 3000,
+  "hostname": "",
+  "folders": [],
+  "routes": [
+    {
+      "uuid": "c6c868c5-dc7e-402e-b089-21b416cda166",
+      "type": "http",
+      "documentation": "check_connection",
+      "method": "get",
+      "endpoint": "",
+      "responses": [
+        {
+          "uuid": "08f31c13-7992-4cd5-aad8-b6c957665fde",
+          "body": "{\n}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "9c583b23-63f5-4dac-9dda-224af697569e",
+      "type": "http",
+      "documentation": "Get robot list",
+      "method": "get",
+      "endpoint": "robots",
+      "responses": [
+        {
+          "uuid": "d12f141a-d007-4ce9-8f60-ecff75c69a5a",
+          "body": "[\n  {\n    \"id\": \"763872733\",\n    \"name\": \"aerilon\",\n    \"agentVersion\": \"4.23.0.ros2\",\n    \"agentOnline\": true,\n    \"updatedTs\": 1770729238630\n  }\n]",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "0c353cf7-1198-47f5-a215-a8bd8ed46a55",
+          "body": "{\n  \"error\": \"Bad Request\"\n}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "a6018d21-aaaf-459f-9fbe-0f1fe41994db",
+          "body": "{\n  \"error\": \"Forbidden\"\n}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "f156ab50-1bac-46a7-a5d0-16e36781fab4",
+      "type": "http",
+      "documentation": "position",
+      "method": "get",
+      "endpoint": "robots/:robotId/localization/pose",
+      "responses": [
+        {
+          "uuid": "c759d7ab-98a0-4c9a-b5ab-f1164f29d246",
+          "body": "{\n  \"mapId\": \"Office\",\n  \"mapDataHash\": \"12355\",\n  \"x\": 0,\n  \"y\": 0,\n  \"theta\": 0,\n  \"ts\": 0,\n  \"xPixels\": 0,\n  \"yPixels\": 0\n}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "13b0e221-a5fc-42c6-9903-9cf1903d7745",
+      "type": "http",
+      "documentation": "navigate",
+      "method": "post",
+      "endpoint": "robots/:robotId/navigation/waypoints",
+      "responses": [
+        {
+          "uuid": "237aa67d-a42e-4ba6-822d-b6384ae17a77",
+          "body": "{\n  \"message\": \"Ok\"\n}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "395ef949-d42e-4eec-b10e-4cf3af88e487",
+          "body": "{\n  \"error\": \"bad request\"\n}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "dedd5617-2d3c-4a6e-8ccf-26ea7656568d",
+          "body": "{\n  \"error\": \"Forbidden\"\n}",
+          "latency": 0,
+          "statusCode": 403,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "553e586b-d016-4e1d-81de-cf020da821ed",
+          "body": "{\n  \"error\": \"robot not found\"\n}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "aa96e796-808e-4304-9b24-8bc8e172ab1e",
+          "body": "{\n  \"error\": \"Internal server error\"\n}",
+          "latency": 0,
+          "statusCode": 500,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "ffc8c87c-2734-419e-8e96-162d7693d7b0",
+      "type": "http",
+      "documentation": "start_activity or stop",
+      "method": "post",
+      "endpoint": "robots/:robotId/actions",
+      "responses": [
+        {
+          "uuid": "ab0cd999-cddf-47e3-849c-ef65cb9d3dd6",
+          "body": "{\n  \"executionId\": \"1234\",\n  \"status\": \"started\",\n  \"statusDetails\": \"Starting\",\n  \"startTs\": 0,\n  \"lastUpdateTs\": 0,\n  \"returnCode\": 0,\n  \"stderr\": \"\",\n  \"stdout\": \"\"\n}",
+          "latency": 0,
+          "statusCode": 201,
+          "label": "Executes an action on a robot",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "85a6f3ef-1a2f-41c1-b816-eb274fb6ef1b",
+      "type": "http",
+      "documentation": "localize",
+      "method": "post",
+      "endpoint": "robots/:robotId/localization",
+      "responses": [
+        {
+          "uuid": "ec04cbc9-4752-4da3-93ca-0a0ed30fc61f",
+          "body": "{\n  \"mapId\": \"Office\",\n  \"mapDataHash\": \"12355\",\n  \"x\": 0,\n  \"y\": 0,\n  \"theta\": 0,\n  \"ts\": 0,\n  \"xPixels\": 0,\n  \"yPixels\": 0\n}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "9944f4e4-62ec-4df9-be19-ce76c9f03d4e",
+      "type": "http",
+      "documentation": "battery_soc",
+      "method": "get",
+      "endpoint": "robots/:robotId/attributes/:attributeId",
+      "responses": [
+        {
+          "uuid": "56ca83e7-1830-430d-a490-13ab239c6539",
+          "body": "{\n  \"attribute\": \"battery\",\n  \"value\": 0.2680000066757202,\n  \"ts\": 1770841867943\n}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "params",
+              "modifier": "attributeId",
+              "value": "battery",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "78958f60-99e0-47cc-969f-b39bda7f0634",
+          "body": "{\n  \"error\": \"Attribute does no exist for this robot\"\n}",
+          "latency": 0,
+          "statusCode": 404,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "7444ad72-9984-4ebe-80ab-472bf39139af",
+      "type": "http",
+      "documentation": "get current map",
+      "method": "get",
+      "endpoint": "robots/:robotId/maps/current",
+      "responses": [
+        {
+          "uuid": "5643eb3a-7686-41e7-9353-e6ac86405509",
+          "body": "[\n  {\n    \"robotId\": \"string\",\n    \"mapId\": \"string\",\n    \"frameId\": \"string\",\n    \"label\": \"string\",\n    \"width\": 0,\n    \"height\": 0,\n    \"resolution\": 0,\n    \"x\": 0,\n    \"y\": 0,\n    \"dataHash\": \"string\",\n    \"formatVersion\": 0,\n    \"updatedTs\": 0\n  }\n]",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "2e89edbb-993b-4419-a64b-57f47cf53768",
+          "body": "{\n  \"error\": \"Internal server error\"\n}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "c1800e39-9e83-4fa6-b8a8-7526e0930e37",
+      "type": "http",
+      "documentation": "is_command_completed",
+      "method": "get",
+      "endpoint": "robots/:robotId/actions/:executionId",
+      "responses": [
+        {
+          "uuid": "3ec19ddd-9773-42fd-8562-f430ba8d2223",
+          "body": "{\n  \"executionId\": \"string\",\n  \"status\": \"finished\",\n  \"statusDetails\": \"string\",\n  \"startTs\": 0,\n  \"lastUpdateTs\": 0,\n  \"returnCode\": 0,\n  \"stderr\": \"string\",\n  \"stdout\": \"string\"\n}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    }
+  ],
+  "rootChildren": [
+    {
+      "type": "route",
+      "uuid": "c6c868c5-dc7e-402e-b089-21b416cda166"
+    },
+    {
+      "type": "route",
+      "uuid": "9c583b23-63f5-4dac-9dda-224af697569e"
+    },
+    {
+      "type": "route",
+      "uuid": "85a6f3ef-1a2f-41c1-b816-eb274fb6ef1b"
+    },
+    {
+      "type": "route",
+      "uuid": "13b0e221-a5fc-42c6-9903-9cf1903d7745"
+    },
+    {
+      "type": "route",
+      "uuid": "ffc8c87c-2734-419e-8e96-162d7693d7b0"
+    },
+    {
+      "type": "route",
+      "uuid": "f156ab50-1bac-46a7-a5d0-16e36781fab4"
+    },
+    {
+      "type": "route",
+      "uuid": "9944f4e4-62ec-4df9-be19-ce76c9f03d4e"
+    },
+    {
+      "type": "route",
+      "uuid": "7444ad72-9984-4ebe-80ab-472bf39139af"
+    },
+    {
+      "type": "route",
+      "uuid": "c1800e39-9e83-4fa6-b8a8-7526e0930e37"
+    }
+  ],
+  "proxyMode": false,
+  "proxyHost": "",
+  "proxyRemovePrefix": false,
+  "tlsOptions": {
+    "enabled": false,
+    "type": "CERT",
+    "pfxPath": "",
+    "certPath": "",
+    "keyPath": "",
+    "caPath": "",
+    "passphrase": ""
+  },
+  "cors": true,
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json"
+    },
+    {
+      "key": "Access-Control-Allow-Origin",
+      "value": "*"
+    },
+    {
+      "key": "Access-Control-Allow-Methods",
+      "value": "GET,POST,PUT,PATCH,DELETE,HEAD,OPTIONS"
+    },
+    {
+      "key": "Access-Control-Allow-Headers",
+      "value": "Content-Type, Origin, Accept, Authorization, Content-Length, X-Requested-With"
+    }
+  ],
+  "proxyReqHeaders": [
+    {
+      "key": "",
+      "value": ""
+    }
+  ],
+  "proxyResHeaders": [
+    {
+      "key": "",
+      "value": ""
+    }
+  ],
+  "data": [],
+  "callbacks": []
+}
