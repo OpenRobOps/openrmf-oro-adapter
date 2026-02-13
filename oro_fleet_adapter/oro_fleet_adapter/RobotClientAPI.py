@@ -20,25 +20,36 @@
     will need to make http request calls to the appropriate endpoints within
     these functions.
 '''
-
+from .Requester import Requester
+from rclpy.impl.rcutils_logger import RcutilsLogger
 
 class RobotAPI:
     # The constructor below accepts parameters typically required to submit
     # http requests. Users should modify the constructor as per the
     # requirements of their robot's API
-    def __init__(self, config_yaml):
-        self.prefix = config_yaml['prefix']
-        self.user = config_yaml['user']
-        self.password = config_yaml['password']
-        self.timeout = 5.0
-        self.debug = False
+    def __init__(self, config_yaml: dict, prefix: str, timeout: float) -> None:
+        self.prefix = prefix
+        self.timeout = timeout
+        self.logger = RcutilsLogger(f"RobotAPI ({prefix})")
+        
+        self.headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+        self.requester = Requester(
+            base_url=self.prefix,
+            headers=self.headers,
+            timeout=self.timeout,
+            logger=self.logger
+        )
 
     def check_connection(self):
         ''' Return True if connection to the robot API server is successful '''
-        # ------------------------ #
-        # IMPLEMENT YOUR CODE HERE #
-        # ------------------------ #
-        return True
+        response = self.requester.get_request(endpoint="")
+        if not response:
+            self.logger.error("No response received from robot API server")
+            return False
+        return response.status_code == 200
 
     def localize(
         self,
@@ -52,6 +63,8 @@ class RobotAPI:
         # ------------------------ #
         # IMPLEMENT YOUR CODE HERE #
         # ------------------------ #
+        #
+        # TODO: this is not implemented on inorbit api
         return False
     
     def navigate(
@@ -65,10 +78,25 @@ class RobotAPI:
             and theta are in the robot's coordinate convention. This function
             should return True if the robot has accepted the request,
             else False '''
-        # ------------------------ #
-        # IMPLEMENT YOUR CODE HERE #
-        # ------------------------ #
-        return False
+        
+        request_body = {
+            "waypoints": [
+                {
+                    "frameId": "string",
+                    "x": pose[0],
+                    "y": pose[1],
+                    "theta": pose[2]
+                }
+            ]
+        }
+        response = self.requester.post_request(
+            endpoint=f"robots/{robot_name}/navigation/waypoints",
+            json=request_body
+        )
+        if not response:
+            self.logger.error("No response received from robot API server")
+            return False
+        return response.status_code == 200
 
     def start_activity(
         self,
@@ -81,49 +109,103 @@ class RobotAPI:
         or begin cleaning a zone for a cleaning robot.
         Return True if process has started/is queued successfully, else
         return False '''
-        # ------------------------ #
-        # IMPLEMENT YOUR CODE HERE #
-        # ------------------------ #
-        return False
+        action_body = {
+            "actionId": "string",
+            "parameters": {}
+        }
+        response = self.requester.post_request(
+            endpoint=f"robots/{robot_name}/actions",
+            json=action_body
+        )
+        if not response:
+            self.logger.error("No response received from robot API server")
+            return False
+        return response.status_code == 200
+
 
     def stop(self, robot_name: str):
         ''' Command the robot to stop.
             Return True if robot has successfully stopped. Else False. '''
-        # ------------------------ #
-        # IMPLEMENT YOUR CODE HERE #
-        # ------------------------ #
-        return False
+        # TODO: this is not implemented on inorbit api, check if for oro will change
+        action_body = {'actionId': 'CancelNavGoal-000000'}
+        response = self.requester.post_request(
+            endpoint=f"robots/{robot_name}/actions",
+            json=action_body
+        )
+        if not response:
+            self.logger.error("No response received from robot API server")
+            return False
+        return response.status_code == 200
 
     def position(self, robot_name: str):
         ''' Return [x, y, theta] expressed in the robot's coordinate frame or
         None if any errors are encountered '''
-        # ------------------------ #
-        # IMPLEMENT YOUR CODE HERE #
-        # ------------------------ #
-        return None
+        response = self.requester.get_request(
+            endpoint=f"robots/{robot_name}/localization/pose"
+        )
+        if not response:
+            self.logger.error("No response received from robot API server")
+            return None
+        response_json = response.json()
+        
+        # check if response_json has the expected keys x, y, theta
+        if not all(k in response_json for k in ("x", "y", "theta")):
+            self.logger.error(f"Response JSON missing expected keys: {response_json}")
+            return None
+        return response_json['x'], response_json['y'], response_json['theta']
 
     def battery_soc(self, robot_name: str):
         ''' Return the state of charge of the robot as a value between 0.0
         and 1.0. Else return None if any errors are encountered. '''
-        # ------------------------ #
-        # IMPLEMENT YOUR CODE HERE #
-        # ------------------------ #
-        return None
+        attribute_id = 'battery'
+        response = self.requester.get_request(
+            endpoint=f"robots/{robot_name}/attributes/{attribute_id}"
+        )
+        if not response:
+            self.logger.error("No response received from robot API server")
+            return None
+        response_json = response.json()
+        # check if response_json has the expected key 'value'
+        if 'value' not in response_json:
+            self.logger.error(f"Response JSON missing 'value' key: {response_json}")
+            return None
+        # check that the battery soc value is between 0.0 and 1.0
+        if not (0.0 <= response_json['value'] <= 1.0):
+            self.logger.error(
+                f"Battery SoC value out of expected range [0.0, 1.0]: {response_json['value']}"
+            )
+            return None
+        return response_json['value']
 
     def map(self, robot_name: str):
         ''' Return the name of the map that the robot is currently on or
         None if any errors are encountered. '''
-        # ------------------------ #
-        # IMPLEMENT YOUR CODE HERE #
-        # ------------------------ #
-        return None
+        response = self.requester.get_request(
+            endpoint=f"robots/{robot_name}/maps/current"
+        )
+        if not response:
+            self.logger.error("No response received from robot API server")
+            return None
+        if response.status_code != 200:
+            self.logger.error(f"Unexpected status code {response.status_code} from robot API server")
+            return None
+        response_json = response.json()
+        # check if response_json has the expected key 'label'
+        if isinstance(response_json, list):
+            if not response_json:
+                self.logger.error("Response JSON is an empty list")
+                return None
+            response_json = response_json[0]
+        if 'label' not in response_json:
+            self.logger.error(f"Response JSON missing 'label' key: {response_json}")
+            return None
+            
+        return response_json['label']
 
     def is_command_completed(self):
         ''' Return True if the robot has completed its last command, else
         return False. '''
-        # ------------------------ #
-        # IMPLEMENT YOUR CODE HERE #
-        # ------------------------ #
+        # TODO: this is not implemented on inorbit api
         return False
 
     def get_data(self, robot_name: str):
