@@ -375,7 +375,7 @@
       "responses": [
         {
           "uuid": "5643eb3a-7686-41e7-9353-e6ac86405509",
-          "body": "[\n  {\n    \"robotId\": \"string\",\n    \"mapId\": \"string\",\n    \"frameId\": \"string\",\n    \"label\": \"string\",\n    \"width\": 0,\n    \"height\": 0,\n    \"resolution\": 0,\n    \"x\": 0,\n    \"y\": 0,\n    \"dataHash\": \"string\",\n    \"formatVersion\": 0,\n    \"updatedTs\": 0\n  }\n]",
+          "body": "[\n  {\n    \"robotId\": \"string\",\n    \"mapId\": \"string\",\n    \"frameId\": \"string\",\n    \"label\": \"L1\",\n    \"width\": 0,\n    \"height\": 0,\n    \"resolution\": 0,\n    \"x\": 0,\n    \"y\": 0,\n    \"dataHash\": \"string\",\n    \"formatVersion\": 0,\n    \"updatedTs\": 0\n  }\n]",
           "latency": 0,
           "statusCode": 200,
           "label": "",
