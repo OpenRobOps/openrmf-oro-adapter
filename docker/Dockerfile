@@ -18,6 +18,8 @@ RUN apt-get update \
    vim \
    && rm -r /var/lib/apt/lists/*
 
+RUN pip install nudged --break-system-packages
+
 # 2. Add user `docker`
 RUN useradd -m docker -s /bin/bash && echo "docker:docker" | chpasswd \
    && adduser docker sudo \
