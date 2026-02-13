@@ -114,9 +114,9 @@ def main(argv=sys.argv):
     fleet_config.server_uri = server_uri
 
     # Configure the transforms between robot and RMF frames
-    # for level, coords in config_yaml['reference_coordinates'].items():
-    #     tf = compute_transforms(level, coords, node)
-    #     fleet_config.add_robot_coordinates_transformation(level, tf)
+    for level, coords in config_yaml['reference_coordinates'].items():
+        tf = compute_transforms(level, coords, node)
+        fleet_config.add_robot_coordinates_transformation(level, tf)
 
     fleet_handle = adapter.add_easy_fleet(fleet_config)
 

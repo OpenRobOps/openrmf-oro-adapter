@@ -11,7 +11,7 @@
     <arg name="use_reservation_node" value="true"/>
   </include>
 
-  <!-- TinyRobot fleet adapter -->
+  <!-- fleet adapter -->
   <group>
     <include file="$(find-pkg-share oro_fleet_adapter)/launch/fleet_adapter.launch.xml">
       <arg name="use_sim_time" value="$(var use_sim_time)"/>

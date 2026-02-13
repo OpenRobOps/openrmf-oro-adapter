@@ -6,7 +6,7 @@ fleet_manager:
   timeout: 5.0
 
 rmf_fleet:
-  name: "tinyRobot"
+  name: "ORO"
   limits:
     linear: [0.5, 0.75] # velocity, acceleration
     angular: [0.6, 2.0] # velocity, acceleration
@@ -62,13 +62,13 @@ rmf_fleet:
         charger: "tinyRobot2_charger"
         # No mention of responsive_wait means the fleet-wide setting will be used
 
-# reference_coordinates:
-#   L1:
-#     rmf: [[20.424, -5.312],  
-#           [10.433, -5.575],  
-#           [18.814, -11.079], 
-#           [6.526, -3.246]]  
-#     robot: [[0.372, 0.512],    
-#             [-9.619, 0.249],   
-#             [-1.238, -5.255], 
-#             [-13.526, 2.578]] 
+reference_coordinates:
+  L1:
+    rmf: [[0.0, 0.0 ],
+          [1.0, 1.0],
+          [2.0, 2.0],
+          [3.0, 3.0]]
+    robot: [[0.0, 0.0 ],
+          [1.0, 1.0],
+          [2.0, 2.0],
+          [3.0, 3.0]]
