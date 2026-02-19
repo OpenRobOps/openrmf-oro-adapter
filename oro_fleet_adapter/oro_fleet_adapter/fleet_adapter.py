@@ -122,7 +122,11 @@ def main(argv=sys.argv):
 
     # Initialize robot API for this fleet
     fleet_mgr_yaml = config_yaml['fleet_manager']
-    api = RobotAPI(fleet_mgr_yaml)
+    api = RobotAPI(
+        config_yaml=fleet_mgr_yaml,
+        prefix=fleet_mgr_yaml['prefix'],
+        timeout=fleet_mgr_yaml.get('timeout', 5.0)
+    )
 
     robots = {}
     for robot_name in fleet_config.known_robots:
