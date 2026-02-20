@@ -31,10 +31,12 @@ class RobotAPI:
         self.prefix = prefix
         self.timeout = timeout
         self.logger = RcutilsLogger(f"RobotAPI ({prefix})")
+        self.config_yaml = config_yaml
         
         self.headers = {
             'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'x-auth-inorbit-app-key': config_yaml['api_key']
         }
         self.requester = Requester(
             base_url=self.prefix,
@@ -45,7 +47,7 @@ class RobotAPI:
 
     def check_connection(self):
         ''' Return True if connection to the robot API server is successful '''
-        response = self.requester.get_request(endpoint="")
+        response = self.requester.get_request(endpoint="robots")
         if not response:
             self.logger.error("No response received from robot API server")
             return False
@@ -82,7 +84,7 @@ class RobotAPI:
         request_body = {
             "waypoints": [
                 {
-                    "frameId": "string",
+                    "frameId": map_name,
                     "x": pose[0],
                     "y": pose[1],
                     "theta": pose[2]
@@ -157,7 +159,7 @@ class RobotAPI:
     def battery_soc(self, robot_name: str):
         ''' Return the state of charge of the robot as a value between 0.0
         and 1.0. Else return None if any errors are encountered. '''
-        attribute_id = 'battery'
+        attribute_id = self.config_yaml['battery_attribute_id']
         response = self.requester.get_request(
             endpoint=f"robots/{robot_name}/attributes/{attribute_id}"
         )
@@ -180,6 +182,8 @@ class RobotAPI:
     def map(self, robot_name: str):
         ''' Return the name of the map that the robot is currently on or
         None if any errors are encountered. '''
+        return "L1"
+        # TODO: check that inorbit does not return anything just internal error.
         response = self.requester.get_request(
             endpoint=f"robots/{robot_name}/maps/current"
         )
@@ -205,7 +209,7 @@ class RobotAPI:
     def is_command_completed(self):
         ''' Return True if the robot has completed its last command, else
         return False. '''
-        # TODO: this is not implemented on inorbit api
+        # TODO: launch custom actions and see if the id is returned in the response, then check status of that id to determine if command is completed
         return False
 
     def get_data(self, robot_name: str):

@@ -20,7 +20,7 @@
     <include file="$(find-pkg-share oro_fleet_adapter)/launch/fleet_adapter.launch.xml">
       <arg name="use_sim_time" value="$(var use_sim_time)"/>
       <arg name="nav_graph_file" value="$(find-pkg-share rmf_demos_maps)/maps/office/nav_graphs/0.yaml" />
-      <arg name="config_file" value="$(find-pkg-share oro_fleet_adapter)/config.yaml"/>
+      <arg name="config_file" value="$(find-pkg-share oro_fleet_adapter)/inorbit.config.yaml"/>
     </include>
   </group>
 
