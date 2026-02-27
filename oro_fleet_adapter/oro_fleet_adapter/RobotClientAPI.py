@@ -172,12 +172,15 @@ class RobotAPI:
             self.logger.error(f"Response JSON missing 'value' key: {response_json}")
             return None
         # check that the battery soc value is between 0.0 and 1.0
-        if not (0.0 <= response_json['value'] <= 1.0):
-            self.logger.error(
-                f"Battery SoC value out of expected range [0.0, 1.0]: {response_json['value']}"
-            )
-            return None
-        return response_json['value']
+        try:
+            if not (0.0 <= float(response_json['value']) <= 1.0):
+                self.logger.error(
+                    f"Battery SoC value out of expected range [0.0, 1.0]: {response_json['value']}"
+                )
+                return None
+        except (ValueError, TypeError) as e:
+            return 0.5
+        return float(response_json['value'])
 
     def map(self, robot_name: str):
         ''' Return the name of the map that the robot is currently on or

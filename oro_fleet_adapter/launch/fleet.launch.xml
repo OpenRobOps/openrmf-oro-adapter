@@ -42,9 +42,9 @@
     <!-- Fleet adapter -->
     <group>
       <group if="$(var use_sim_time)">
-        <node pkg="rmf_demos_fleet_adapter"
+        <node pkg="oro_fleet_adapter"
               exec="fleet_adapter"
-              args="-c $(find-pkg-share rmf_demos)/config/office/tinyRobot_config.yaml -n $(find-pkg-share rmf_demos_maps)/maps/office/nav_graphs/0.yaml -sim"
+              args="-c /home/santiagoek/ws/src/openrmf-oro-adapter/oro_fleet_adapter/demo.config.yaml -n $(find-pkg-share rmf_demos_maps)/maps/office/nav_graphs/0.yaml -sim"
               output="both">
 
           <param name="use_sim_time" value="$(var use_sim_time)"/>
@@ -53,9 +53,9 @@
       </group>
 
       <group unless="$(var use_sim_time)">
-        <node pkg="rmf_demos_fleet_adapter"
+        <node pkg="oro_fleet_adapter"
               exec="fleet_adapter"
-              args="-c $(find-pkg-share rmf_demos)/config/office/tinyRobot_config.yaml -n $(find-pkg-share rmf_demos_maps)/maps/office/nav_graphs/0.yaml"
+              args="-c /home/santiagoek/ws/src/openrmf-oro-adapter/oro_fleet_adapter/demo.config.yaml -n $(find-pkg-share rmf_demos_maps)/maps/office/nav_graphs/0.yaml"
               output="both">
 
           <param name="use_sim_time" value="$(var use_sim_time)"/>

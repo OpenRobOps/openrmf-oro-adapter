@@ -79,3 +79,4 @@ ros2 launch andino_rmf_sim andino_office.launch.py
 pkill -9 -f ros
 pkill -9 -f andino
 /home/santiagoek/.inorbit/dist/scripts/start.sh
+ros2 launch oro_fleet_adapter fleet.launch.xml server_uri:="ws://localhost:8000/_internal" | grep fleet
