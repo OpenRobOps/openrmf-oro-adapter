@@ -65,3 +65,17 @@ xhost +local:docker
 
 docker compose -f docker/docker-compose.yaml build
 docker compose -f docker/docker-compose.yaml run --rm oro_fleet_adapter
+docker compose -f docker/docker-compose.yaml run -d --rm open_rmf_backend
+docker compose -f docker/docker-compose.yaml run -d --rm open_rmf_frontend
+
+ros2 run oro_fleet_adapter fleet_adapter -c ./src/oro_fleet_adapter/config.yaml -s "ws://localhost:8000/_internal" -n ./src/office/office.building.yaml 
+ros2 launch oro_fleet_adapter fleet.launch.xml
+/rmf_demos_ws/install/rmf_demos_maps/share/rmf_demos_maps/maps/office/nav_graphs
+
+
+ros2 launch oro_fleet_adapter fleet.inorbit.launch.xml server_uri:="ws://localhost:8000/_internal"
+ros2 launch andino_rmf_sim andino_office.launch.py
+
+pkill -9 -f ros
+pkill -9 -f andino
+/home/santiagoek/.inorbit/dist/scripts/start.sh

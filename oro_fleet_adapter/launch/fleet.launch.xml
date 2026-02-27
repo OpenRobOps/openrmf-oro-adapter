@@ -5,24 +5,66 @@
   <arg name="failover_mode" default="false"/>
   <arg name="gazebo_version" default='8'/>
   <arg name="sim_update_rate" default='100'/>
+  <arg name="viz_config_file" default ="$(find-pkg-share rmf_demos)/include/office/office.rviz"/>
 
+  <arg name="nav_graph_file" default="$(find-pkg-share rmf_demos_maps)/maps/office/nav_graphs/0.yaml" />
+  <arg name="config_file" default="$(find-pkg-share rmf_demos)/config/office/tinyRobot_config.yaml"/>
+  <arg name="server_uri" default="" description="The URI of the api server to transmit state and task information."/>
+  <arg name="output" default="screen"/>
 
   <!-- Common launch -->
   <include file="$(find-pkg-share rmf_demos)/common.launch.xml">
     <arg name="use_sim_time" value="$(var use_sim_time)"/>
-    <arg name="viz_config_file" value ="$(find-pkg-share rmf_demos)/include/office/office.rviz"/>
+    <arg name="viz_config_file" value ="$(var viz_config_file)"/>
     <arg name="config_file" value="$(find-pkg-share rmf_demos_maps)/office/office.building.yaml"/>
     <arg name="use_reservation_node" value="true"/>
   </include>
 
   <!-- fleet adapter -->
-  <group>
+  <!-- <group>
     <include file="$(find-pkg-share oro_fleet_adapter)/launch/fleet_adapter.launch.xml">
       <arg name="use_sim_time" value="$(var use_sim_time)"/>
       <arg name="nav_graph_file" value="$(find-pkg-share rmf_demos_maps)/maps/office/nav_graphs/0.yaml" />
-      <arg name="config_file" value="$(find-pkg-share oro_fleet_adapter)/config.yaml"/>
+      <arg name="config_file" value="/home/santiagoek/ws/src/openrmf-oro-adapter/oro_fleet_adapter/demo.config.yaml"/>
     </include>
+  </group> -->
+
+  <group>
+    <!-- Fleet manager -->
+    <node pkg="rmf_demos_fleet_adapter"
+          exec="fleet_manager"
+          args="--config_file $(find-pkg-share rmf_demos)/config/office/tinyRobot_config.yaml"
+          output="both">
+
+      <param name="use_sim_time" value="$(var use_sim_time)"/>
+    </node>
+
+    <!-- Fleet adapter -->
+    <group>
+      <group if="$(var use_sim_time)">
+        <node pkg="rmf_demos_fleet_adapter"
+              exec="fleet_adapter"
+              args="-c $(find-pkg-share rmf_demos)/config/office/tinyRobot_config.yaml -n $(find-pkg-share rmf_demos_maps)/maps/office/nav_graphs/0.yaml -sim"
+              output="both">
+
+          <param name="use_sim_time" value="$(var use_sim_time)"/>
+          <param name="server_uri" value="$(var server_uri)"/>
+        </node>
+      </group>
+
+      <group unless="$(var use_sim_time)">
+        <node pkg="rmf_demos_fleet_adapter"
+              exec="fleet_adapter"
+              args="-c $(find-pkg-share rmf_demos)/config/office/tinyRobot_config.yaml -n $(find-pkg-share rmf_demos_maps)/maps/office/nav_graphs/0.yaml"
+              output="both">
+
+          <param name="use_sim_time" value="$(var use_sim_time)"/>
+          <param name="server_uri" value="$(var server_uri)"/>
+        </node>
+      </group>
+    </group>
   </group>
+
 
   <!-- Simulation launch -->
   <include file="$(find-pkg-share rmf_demos_gz)/simulation.launch.xml">
