@@ -32,7 +32,7 @@
     <group if="$(var use_sim_time)">
       <node pkg="oro_fleet_adapter"
             exec="fleet_adapter"
-            args="-c /home/santiagoek/ws/src/openrmf-oro-adapter/oro_fleet_adapter/demo.andino.config.yaml -n $(find-pkg-share andino_rmf_maps)/maps/andino_office/nav_graphs/0.yaml -sim"
+            args="-c $(find-pkg-share oro_fleet_adapter)/demo.andino.config.yaml -n $(find-pkg-share andino_rmf_maps)/maps/andino_office/nav_graphs/0.yaml -sim"
             output="both">
 
         <param name="use_sim_time" value="$(var use_sim_time)"/>
@@ -43,7 +43,7 @@
     <group unless="$(var use_sim_time)">
       <node pkg="oro_fleet_adapter"
             exec="fleet_adapter"
-            args="-c /home/santiagoek/ws/src/openrmf-oro-adapter/oro_fleet_adapter/demo.andino.config.yaml -n $(find-pkg-share andino_rmf_maps)/maps/andino_office/nav_graphs/0.yaml"
+            args="-c $(find-pkg-share oro_fleet_adapter)/demo.andino.config.yaml -n $(find-pkg-share andino_rmf_maps)/maps/andino_office/nav_graphs/0.yaml"
             output="both">
 
         <param name="use_sim_time" value="$(var use_sim_time)"/>

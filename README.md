@@ -4,38 +4,7 @@ The objective of this package is to serve as a reference or template for writing
 
 > Note: The implementation in this package is not the only way to write a `full_control` fleet adapter. It is only one such example that may be helpful for users to quickly integrate their fleets with RMF.
 
-## Step 1: Fill up missing code
-Simply fill up certain blocks of code which make API calls to your mobile robotic fleet.
-These blocks are highlighted as seen below and are found in `RobotClientAPI.py` and `RobotCommandHandle.py` respectively.
-```
-# IMPLEMENT YOUR CODE HERE #
-```
-
-The bulk of the work is in populating the `RobotClientAPI.py` file which defines a wrapper for communicating with the fleet of interest.
-For example, if your fleet offers a `REST API` with a `GET` method to obtain the position of the robot, then the `RobotAPI::position()` function may be implemented as below
-
-```python
-def position(self):
-    url = self.prefix + "/data/position" # example endpoint
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        data = response.json()
-        x = data["x"]
-        y = data["y"]
-        angle = data["angle"]
-        return [x, y, angle]
-    except HTTPError as http_err:
-        print(f"HTTP error: {http_err}")
-    except Exception as err:
-        print(f"Other error: {err}")
-    return None
-
-```
-
-Alternatively, if your robotic fleet offers a websocket port for communication or allows for messages to be exchanged over ROS1/2, then these functions can be implemented using those protocols respectively.
-
-## Step 2: Update config.yaml
+## Step 1: Update config.yaml
 The `config.yaml` file contains important parameters for setting up the fleet adapter. There are three broad sections to this file:
 
 1. **rmf_fleet** : containing parameters that describe the robots in this fleet
@@ -44,7 +13,35 @@ The `config.yaml` file contains important parameters for setting up the fleet ad
 
 > Note: This fleet adapter uses the `nudged` python library to compute transformations from RMF to Robot frame and vice versa. If the user is aware of the `scale`, `rotation` and `translation` values for each transform, they may modify the code in `fleet_adapter.py` to directly create the `nudged` transform objects from these values.
 
-## Step 3: Run the fleet adapter:
+## Step 2: Build the package
+Use the command below to build the package after filling in the code and updating the configuration file.
+```bash
+colcon build
+source install/setup.bash
+```
+
+## Step 3: Run the simulation environment
+If you do not have access to a physical fleet of robots, you can use the `andino_fleet` package which provides a Gazebo simulation environment with an `Andino` robot. You can launch the simulation environment using the command below. This will spawn 1 `Andino` robot in the `populated office` Gazebo world, the package `oro_fleet_adapter` has a pre-configured fleet adapter configuration file to work with this setup.
+
+```bash
+ros2 launch oro_fleet_adapter fleet.andino.sim.launch.xml
+```
+
+## Step 3.1: Install the Inorbit agent
+Since the Inorbit is going to act as the fleet manager of an andino robot, it is important to have the agent up and running. You can install the agent using the command below. Once installed, you can start the agent using the command shown below.
+
+```bash
+curl -fsSL https://control.inorbit.ai/liftoff/mwZZ50wpoCOh33bM -o /tmp/installer.sh
+sed -i '/Press ENTER to resume installation or CTRL\+C to cancel\./d;/read -r input <\/dev\/tty/d' /tmp/installer.sh
+sh /tmp/installer.sh
+```
+
+**Execute the command below to start the agent, (the agent has to be running after the simulation environment is launched leave this command running on a separate terminal, if the simulation is finished the agent will need to be restarted again so it can refresh the `/tf` topic subscriptions and avoid stale data issues):**
+```bash
+$HOME/.inorbit/dist/scripts/start.sh
+```
+
+## Step 5: Run the fleet adapter:
 
 Run the command below while passing the paths to the configuration file and navigation graph that this fleet operates on.
 
@@ -57,40 +54,12 @@ ros2 run oro_fleet_adapter fleet_adapter -c CONFIG_FILE -n NAV_GRAPH
 #Usage with the websocket uri
 ros2 run oro_fleet_adapter fleet_adapter -c CONFIG_FILE -n NAV_GRAPH -s SERVER_URI
 
-#e.g.
-ros2 run oro_fleet_adapter fleet_adapter -c CONFIG_FILE -n NAV_GRAPH -s ws://localhost:7878
+# oro fleet manager has a launch file that can be used to run the fleet adapter with the required parameters, you can use it as shown below
+ros2 launch oro_fleet_adapter fleet.andino.launch.xml
 ```
 
-xhost +local:docker
-
-docker compose -f docker/docker-compose.yaml build
-docker compose -f docker/docker-compose.yaml run --rm oro_fleet_adapter
-docker compose -f docker/docker-compose.yaml run -d --rm open_rmf_backend
-docker compose -f docker/docker-compose.yaml run -d --rm open_rmf_frontend
-
-ros2 run oro_fleet_adapter fleet_adapter -c ./src/oro_fleet_adapter/config.yaml -s "ws://localhost:8000/_internal" -n ./src/office/office.building.yaml 
-ros2 launch oro_fleet_adapter fleet.launch.xml
-/rmf_demos_ws/install/rmf_demos_maps/share/rmf_demos_maps/maps/office/nav_graphs
-
-
-ros2 launch oro_fleet_adapter fleet.launch.xml server_uri:="ws://localhost:8000/_internal"
-
-ros2 launch oro_fleet_adapter fleet.andino.sim.launch.xml
-ros2 launch oro_fleet_adapter fleet.andino.launch.xml server_uri:="ws://localhost:8000/_internal"
-ros2 launch andino_rmf_sim andino_office.launch.py
-
-pkill -9 -f ros
-pkill -9 -f andino
-/home/santiagoek/.inorbit/dist/scripts/start.sh
-ros2 launch oro_fleet_adapter fleet.launch.xml server_uri:="ws://localhost:8000/_internal" | grep fleet
-
-
-## Inorbit agent
-curl https://control.inorbit.ai/liftoff/mwZZ50wpoCOh33bM | sh -> install the agent
-/home/santiagoek/.inorbit/local -> here is where the agent is installed
-/home/santiagoek/.inorbit/dist/scripts/start.sh -> start the agent
-
-curl -fsSL https://control.inorbit.ai/liftoff/mwZZ50wpoCOh33bM -o /tmp/installer.sh
-sed -i '/Press ENTER to resume installation or CTRL\+C to cancel\./d;/read -r input <\/dev\/tty/d' /tmp/installer.sh
-sh /tmp/installer.sh
-$HOME/.inorbit/dist/scripts/start.sh &
+## Sumary
+in order to execute the full simulation environment with the andino robot, you will need to have 3 separate terminals running the following commands:
+1. `ros2 launch oro_fleet_adapter fleet.andino.sim.launch.xml` (to launch the gazebo simulation environment with the andino robot)
+2. `$HOME/.inorbit/dist/scripts/start.sh` (to start the inorbit agent which will be the fleet manager of the andino robot)
+3. `ros2 launch oro_fleet_adapter fleet.andino.launch.xml` (to launch the fleet adapter that will connect the andino robot to RMF and the Inorbit agent)
