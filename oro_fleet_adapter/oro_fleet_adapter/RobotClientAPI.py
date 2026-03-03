@@ -206,25 +206,41 @@ class RobotAPI:
         
         robot_goal = rmf_to_robot(pose[0], pose[1], pose[2])
         print(f"Received navigation request for {robot_name} to pose {pose} on map {map_name} with speed limit {speed_limit}")
-        self.send_goal(robot_name, pose)
+        self.send_goal(robot_name, robot_goal)
         return True
     
-        # request_body = {
-        #     "waypoints": [{
-        #         "frameId": map_name,
-        #         "x": robot_goal[0],
-        #         "y": robot_goal[1],
-        #         "theta": robot_goal[2],
-        #     }]
-        # }
-        # response = self.requester.post_request(
-        #     endpoint=f"robots/{robot_name}/navigation/waypoints",
-        #     json=request_body
-        # )
-        # if not response:
-        #     self.logger.error("No response received from robot API server")
-        #     return False
-        # return response.status_code == 200
+        request_body = {
+            "waypoints": [{
+                "frameId": map_name,
+                "x": pose[0],
+                "y": pose[1],
+                "theta": pose[2],
+            }]
+        }
+        response = self.requester.post_request(
+            endpoint=f"robots/{robot_name}/navigation/waypoints",
+            json=request_body
+        )
+        if not response:
+            self.logger.error("No response received from robot API server")
+            return False
+        return response.status_code == 200
+
+    def localize(
+        self,
+        robot_name: str,
+        pose,
+        map_name: str,
+    ):
+        ''' Request the robot to localize on target map. This 
+            function should return True if the robot has accepted the 
+            request, else False '''
+        # ------------------------ #
+        # IMPLEMENT YOUR CODE HERE #
+        # ------------------------ #
+        #
+        # TODO: this is not implemented on inorbit api
+        return False
 
     def start_activity(
         self, robot_name: str, cmd_id: int, activity: str, label: str
@@ -270,25 +286,25 @@ class RobotAPI:
     def position(self, robot_name: str):
         ''' Return [x, y, theta] expressed in the robot's coordinate frame or
         None if any errors are encountered '''
-        self.ensure_pose_subscription(robot_name)
-        pose = self._pose_cache.get(robot_name)  # [x,y,theta] in ROBOT frame
-        if pose is None:
+        # self.ensure_pose_subscription(robot_name)
+        # pose = self._pose_cache.get(robot_name)  # [x,y,theta] in ROBOT frame
+        # if pose is None:
+        #     return None
+        # return robot_to_rmf(pose[0], pose[1], pose[2])
+        
+        response = self.requester.get_request(
+            endpoint=f"robots/{robot_name}/localization/pose"
+        )
+        if not response:
+            self.logger.error("No response received from robot API server")
             return None
-        return robot_to_rmf(pose[0], pose[1], pose[2])
+        response_json = response.json()
         
-        # response = self.requester.get_request(
-        #     endpoint=f"robots/{robot_name}/localization/pose"
-        # )
-        # if not response:
-        #     self.logger.error("No response received from robot API server")
-        #     return None
-        # response_json = response.json()
-        
-        # # check if response_json has the expected keys x, y, theta
-        # if not all(k in response_json for k in ("x", "y", "theta")):
-        #     self.logger.error(f"Response JSON missing expected keys: {response_json}")
-        #     return None
-        # return [float(response_json['x']), float(response_json['y']), float(response_json['theta'])]
+        # check if response_json has the expected keys x, y, theta
+        if not all(k in response_json for k in ("x", "y", "theta")):
+            self.logger.error(f"Response JSON missing expected keys: {response_json}")
+            return None
+        return [float(response_json['x']), float(response_json['y']), float(response_json['theta'])]
 
     def battery_soc(self, robot_name: str):
         ''' Return the state of charge of the robot as a value between 0.0

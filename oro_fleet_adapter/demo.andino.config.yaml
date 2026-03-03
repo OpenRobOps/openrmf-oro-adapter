@@ -46,13 +46,31 @@ fleet_manager:
   api_key: "6_n2kuw8gi88XUJ6"
   battery_attribute_id: "evwkT2VZ9LLP1-bc"
 
+# reference_coordinates:
+#   L1:
+#     rmf:
+#       - [0.0, 0.0]
+#       - [1.0, 0.0]
+#       - [0.0, 1.0]
+#     robot:
+#       - [0.0, 0.0]
+#       - [1.0, 0.0]
+#       - [0.0, 1.0]
+
 reference_coordinates:
   L1:
     rmf:
-      - [0.0, 0.0]
-      - [1.0, 0.0]
-      - [0.0, 1.0]
+      - [16.155256, -10.884426]     # spawn_robot1
+      - [4.757106,  -9.856659]      # room1
+      - [28.152717, -6.538470]      # room5
     robot:
-      - [0.0, 0.0]
-      - [1.0, 0.0]
-      - [0.0, 1.0]
+      - [-2.7021, 5.1470]
+      - [-13.872, 6.1898]
+      - [ 9.7586, 8.7572]
+
+# reference_coordinates:
+#   L1:
+#     rmf:
+#       - [16.155256, -10.884426]   # spawn_robot1
+#     robot:
+#       - [-2.702000,  5.147000]    # external agent pose at spawn

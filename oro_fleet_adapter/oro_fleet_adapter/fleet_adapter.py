@@ -19,6 +19,7 @@ import math
 import sys
 import threading
 import time
+import nudged
 
 import rclpy
 from rclpy.duration import Duration
@@ -32,6 +33,7 @@ from rclpy.qos import QoSReliabilityPolicy as Reliability
 import rmf_adapter
 from rmf_adapter import Adapter
 import rmf_adapter.easy_full_control as rmf_easy
+from rmf_adapter import Transformation
 from rmf_fleet_msgs.msg import ClosedLanes
 from rmf_fleet_msgs.msg import LaneRequest
 from rmf_fleet_msgs.msg import ModeRequest
@@ -43,6 +45,25 @@ from .RobotClientAPI import RobotAPI
 from .RobotClientAPI import RobotAPIResult
 from .RobotClientAPI import RobotUpdateData
 
+# ------------------------------------------------------------------------------
+# Helper functions
+# ------------------------------------------------------------------------------
+def compute_transforms(level, coords, node=None):
+    """Get transforms between RMF and robot coordinates."""
+    rmf_coords = coords['rmf']
+    robot_coords = coords['robot']
+    tf = nudged.estimate(rmf_coords, robot_coords)
+    if node:
+        mse = nudged.estimate_error(tf, rmf_coords, robot_coords)
+        node.get_logger().info(
+            f"Transformation error estimate for {level}: {mse}"
+        )
+
+    return Transformation(
+        tf.get_rotation(),
+        tf.get_scale(),
+        tf.get_translation()
+    )
 
 # ------------------------------------------------------------------------------
 # Main
@@ -119,6 +140,12 @@ def main(argv=sys.argv):
         server_uri = None
 
     fleet_config.server_uri = server_uri
+    
+    # Configure the transforms between robot and RMF frames
+    for level, coords in config_yaml['reference_coordinates'].items():
+        tf = compute_transforms(level, coords, node)
+        fleet_config.add_robot_coordinates_transformation(level, tf)
+    
     fleet_handle = adapter.add_easy_fleet(fleet_config)
     fleet_handle.more().set_planner_cache_reset_size(2500)
 
@@ -127,10 +154,9 @@ def main(argv=sys.argv):
     update_period = 1.0 / fleet_mgr_yaml.get(
         'robot_state_update_frequency', 10.0
     )
-    api_prefix = (fleet_mgr_yaml['prefix'])
     api = RobotAPI(
         node=node,
-        prefix= api_prefix,
+        prefix= fleet_mgr_yaml['prefix'],
         timeout=fleet_mgr_yaml['timeout'],
         api_key=fleet_mgr_yaml['api_key'],
         battery_attribute_id=fleet_mgr_yaml['battery_attribute_id']
@@ -174,8 +200,8 @@ def main(argv=sys.argv):
     update_thread.start()
 
     # Connect to the extra ROS2 topics that are relevant for the adapter
-    connections = ros_connections(node, robots, fleet_handle)
-    connections  # Avoid unused variable warning
+    # connections = ros_connections(node, robots, fleet_handle)
+    # connections  # Avoid unused variable warning
 
     # Create executor for the command handle node
     rclpy_executor = rclpy.executors.SingleThreadedExecutor()
@@ -223,15 +249,41 @@ class RobotAdapter:
         self.update_handle.update(state, activity_identifier)
 
     def make_callbacks(self):
-        return rmf_easy.RobotCallbacks(
+        callbacks = rmf_easy.RobotCallbacks(
             lambda destination, execution: self.navigate(
                 destination, execution
             ),
             lambda activity: self.stop(activity),
             lambda category, description, execution: self.execute_action(
                 category, description, execution
-            ),
+            )
         )
+
+        callbacks.localize = lambda estimate, execution: self.localize(
+            estimate, execution
+        )
+
+        return callbacks
+
+    
+    def localize(self, estimate, execution):
+        self.node.get_logger().info(
+            f'Commanding [{self.name}] to change map to'
+            f' [{estimate.map}]'
+        )
+        if self.api.localize(self.name, estimate.position, estimate.map):
+            self.node.get_logger().info(
+                f'Localized [{self.name}] on {estimate.map} '
+                f'at position [{estimate.position}]'
+            )
+            execution.finished()
+        else:
+            self.node.get_logger().warn(
+                f'Failed to localize [{self.name}] on {estimate.map} '
+                f'at position [{estimate.position}]. Requesting replanning...'
+            )
+            if self.update_handle is not None and self.update_handle.more() is not None:
+                self.update_handle.more().replan()
 
     def navigate(self, destination, execution):
         self.cmd_id += 1
