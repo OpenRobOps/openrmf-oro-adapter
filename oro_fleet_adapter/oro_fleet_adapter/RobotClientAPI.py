@@ -189,6 +189,12 @@ class RobotAPI:
             return False
         return True
 
+    def is_command_completed(self):
+        ''' Return True if the robot has completed its last command, else
+        return False. '''
+        # TODO: launch custom actions and see if the id is returned in the response, then check status of that id to determine if command is completed
+        return False
+    
     def navigate(
         self,
         robot_name: str,
@@ -277,7 +283,6 @@ class RobotAPI:
     def stop(self, robot_name: str, running_cmd_id: int, stop_cmd_id: int):
         ''' Command the robot to stop.
             Return True if robot has successfully stopped. Else False. '''
-        # TODO: this is not implemented on inorbit api, check if for oro will change
         robot_name = self.get_robot_id(robot_name)
         action_body = {'actionId': 'CancelNavGoal-000000'}
         response = self.requester.post_request(
