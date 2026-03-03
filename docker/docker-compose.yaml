@@ -9,11 +9,11 @@ services:
     container_name: oro_fleet_adapter
     network_mode: host
     volumes:
-      - ..:${HOME}/ws/src/openrmf-oro-adapter
+      - ..:${HOME}/ws/src/openrmf-oro-adapter:rw
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ../inorbit:${HOME}/.inorbit/local/:rw
     tty: true
     stdin_open: true
-    entrypoint: /bin/bash
     privileged: true
     deploy:
       resources:

@@ -77,7 +77,6 @@ USER ${USER}
 ########################
 # Stage 2 - Build      #
 ########################
-# --- Stage 2 - Build ---
 FROM dev AS build
 
 ARG ROS_DISTRO=jazzy
@@ -110,6 +109,9 @@ RUN source /opt/ros/${ROS_DISTRO}/setup.bash \
 RUN source /opt/ros/${ROS_DISTRO}/setup.bash \
  && if [ -f /rmf_demos_ws/install/setup.bash ]; then source /rmf_demos_ws/install/setup.bash; fi \
  && colcon build --symlink-install --event-handlers console_direct+
+
+RUN mkdir -p /home/${USER}/.inorbit/ \
+ && chown -R ${USER}:${USER} /home/${USER}/.inorbit
 
 ############################
 # Stage 3 - Runtime / final #

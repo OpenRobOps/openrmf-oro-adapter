@@ -80,3 +80,14 @@ pkill -9 -f ros
 pkill -9 -f andino
 /home/santiagoek/.inorbit/dist/scripts/start.sh
 ros2 launch oro_fleet_adapter fleet.launch.xml server_uri:="ws://localhost:8000/_internal" | grep fleet
+
+
+## Inorbit agent
+curl https://control.inorbit.ai/liftoff/mwZZ50wpoCOh33bM | sh -> install the agent
+/home/santiagoek/.inorbit/local -> here is where the agent is installed
+/home/santiagoek/.inorbit/dist/scripts/start.sh -> start the agent
+
+curl -fsSL https://control.inorbit.ai/liftoff/mwZZ50wpoCOh33bM -o /tmp/installer.sh
+sed -i '/Press ENTER to resume installation or CTRL\+C to cancel\./d;/read -r input <\/dev\/tty/d' /tmp/installer.sh
+sh /tmp/installer.sh
+$HOME/.inorbit/dist/scripts/start.sh &
