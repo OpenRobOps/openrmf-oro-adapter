@@ -9,7 +9,7 @@ services:
     container_name: oro_fleet_adapter
     network_mode: host
     volumes:
-      - ..:/home/santiagoek/ws/src/openrmf-oro-adapter
+      - ..:${HOME}/ws/src/openrmf-oro-adapter
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
     tty: true
     stdin_open: true
