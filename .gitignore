@@ -206,5 +206,6 @@ AMENT_IGNORE
 inorbit/*
 !inorbit/inorbit.service
 !inorbit/agent.env.sh
+commands.txt
 
 # End of https://www.toptal.com/developers/gitignore/api/python,ros2
