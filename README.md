@@ -63,3 +63,23 @@ in order to execute the full simulation environment with the andino robot, you w
 1. `ros2 launch oro_fleet_adapter fleet.andino.sim.launch.xml` (to launch the gazebo simulation environment with the andino robot)
 2. `$HOME/.inorbit/dist/scripts/start.sh` (to start the inorbit agent which will be the fleet manager of the andino robot)
 3. `ros2 launch oro_fleet_adapter fleet.andino.launch.xml` (to launch the fleet adapter that will connect the andino robot to RMF and the Inorbit agent)
+
+# Docker
+
+To build the docker image for this package, use the command below from the root of the repository.
+
+```bash
+./docker/build.sh
+```
+
+After building the image, you can use docker compose to run all the necessary services such as:
+- oro_fleet_adapter
+- open_rmf_web (frontend)
+- open_rmf_server (backend)
+- mock_api_server (to simulate the Inorbit api responses)
+
+```bash
+docker compose -f docker/docker-compose.yaml up -d
+```
+
+And open a web browser and navigate to `http://localhost:3000/robots` to access the RMF web interface and see the robot in action.
