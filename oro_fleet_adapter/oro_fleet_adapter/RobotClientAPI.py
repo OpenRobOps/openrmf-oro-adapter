@@ -111,6 +111,13 @@ class RobotAPI:
             logger=self.logger
         )
         self.debug = False
+    
+    def get_robot_id(self, robot_name: str) -> str:
+        """
+        Extracts the last part of a robot name split by underscore.
+        Example: 'andino_123' -> '123'
+        """
+        return robot_name.split('_')[-1]
         
     def send_goal(self, robot_name: str, goal):
        # get a goal value
@@ -203,6 +210,7 @@ class RobotAPI:
             should return True if the robot has accepted the request,
             else False '''
         
+        robot_name = self.get_robot_id(robot_name)
         robot_goal = rmf_to_robot(pose[0], pose[1], pose[2])
         print(f"Received navigation request for {robot_name} to pose {pose} on map {map_name} with speed limit {speed_limit}")
         self.send_goal(robot_name, robot_goal)
@@ -238,6 +246,7 @@ class RobotAPI:
         # IMPLEMENT YOUR CODE HERE #
         # ------------------------ #
         #
+        robot_name = self.get_robot_id(robot_name)
         # TODO: this is not implemented on inorbit api
         return False
 
@@ -251,10 +260,7 @@ class RobotAPI:
         For example, load/unload a cart for Deliverybot
         or begin cleaning a zone for a cleaning robot.
         """
-        green = "\033[92m"
-        reset = "\033[0m"
-        self.logger.info(f"{green}Requesting robot {robot_name} to start activity {activity} with label {label}{reset}")
-        
+        robot_name = self.get_robot_id(robot_name)
         action_body = {
             "actionId": activity,
             "parameters": {}
@@ -272,6 +278,7 @@ class RobotAPI:
         ''' Command the robot to stop.
             Return True if robot has successfully stopped. Else False. '''
         # TODO: this is not implemented on inorbit api, check if for oro will change
+        robot_name = self.get_robot_id(robot_name)
         action_body = {'actionId': 'CancelNavGoal-000000'}
         response = self.requester.post_request(
             endpoint=f"robots/{robot_name}/actions",
@@ -283,6 +290,7 @@ class RobotAPI:
         return response.status_code == 200
 
     def position(self, robot_name: str):
+        robot_name = self.get_robot_id(robot_name)
         ''' Return [x, y, theta] expressed in the robot's coordinate frame or
         None if any errors are encountered '''
         
@@ -303,6 +311,7 @@ class RobotAPI:
     def battery_soc(self, robot_name: str):
         ''' Return the state of charge of the robot as a value between 0.0
         and 1.0. Else return None if any errors are encountered. '''
+        robot_name = self.get_robot_id(robot_name)
         attribute_id = self.battery_attribute_id
         response = self.requester.get_request(
             endpoint=f"robots/{robot_name}/attributes/{attribute_id}"
@@ -328,6 +337,7 @@ class RobotAPI:
     def map(self, robot_name: str):
         ''' Return the name of the map that the robot is currently on or
         None if any errors are encountered. '''
+        robot_name = self.get_robot_id(robot_name)
         return "L1"
         # TODO: check that inorbit does not return anything just internal error.
         response = self.requester.get_request(
