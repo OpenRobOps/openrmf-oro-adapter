@@ -30,7 +30,6 @@ from rclpy.impl.rcutils_logger import RcutilsLogger
 
 import time
 from controller_action_msg.msg import RobotPose
-from andino_fleet_msg.srv import RobotControl, SendGoal, CancelGoal, RemoveAllGoals, RequestRobotPosition
 from controller_action_msg.action import AndinoController
 from controller_action_msg.msg import RobotPose
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
@@ -286,11 +285,6 @@ class RobotAPI:
     def position(self, robot_name: str):
         ''' Return [x, y, theta] expressed in the robot's coordinate frame or
         None if any errors are encountered '''
-        # self.ensure_pose_subscription(robot_name)
-        # pose = self._pose_cache.get(robot_name)  # [x,y,theta] in ROBOT frame
-        # if pose is None:
-        #     return None
-        # return robot_to_rmf(pose[0], pose[1], pose[2])
         
         response = self.requester.get_request(
             endpoint=f"robots/{robot_name}/localization/pose"
