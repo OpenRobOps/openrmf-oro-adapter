@@ -31,9 +31,9 @@
 
   <group>
     <!-- Fleet manager -->
-    <node pkg="rmf_demos_fleet_adapter"
+    <node pkg="oro_fleet_adapter"
           exec="fleet_manager"
-          args="--config_file $(find-pkg-share rmf_demos)/config/office/tinyRobot_config.yaml"
+          args="--config_file /home/santiagoek/ws/src/openrmf-oro-adapter/oro_fleet_adapter/demo.config.yaml"
           output="both">
 
       <param name="use_sim_time" value="$(var use_sim_time)"/>

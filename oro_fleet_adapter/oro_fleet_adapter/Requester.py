@@ -13,7 +13,7 @@ class Requester:
 
     def get_request(self, /, * , endpoint: str, json=None) -> Response | None:
         url = f"{self.base_url}{endpoint}"
-        url = url.replace("Andino_", "")
+        url = url.replace("andino1", "620918333")
         try:
             res = requests.get(url, headers=self.headers, json=json, timeout=self.timeout)
             if res.status_code >= 300:
@@ -28,7 +28,7 @@ class Requester:
 
     def post_request(self, /, * , endpoint: str, json=None) -> Response | None:
         url = f"{self.base_url}{endpoint}"
-        url = url.replace("Andino_", "")
+        url = url.replace("andino1", "620918333")
         try:
             res = requests.post(url, headers=self.headers, json=json, timeout=self.timeout)
             if res.status_code >= 300:

@@ -73,7 +73,10 @@ ros2 launch oro_fleet_adapter fleet.launch.xml
 /rmf_demos_ws/install/rmf_demos_maps/share/rmf_demos_maps/maps/office/nav_graphs
 
 
-ros2 launch oro_fleet_adapter fleet.inorbit.launch.xml server_uri:="ws://localhost:8000/_internal"
+ros2 launch oro_fleet_adapter fleet.launch.xml server_uri:="ws://localhost:8000/_internal"
+
+ros2 launch oro_fleet_adapter fleet.andino.sim.launch.xml
+ros2 launch oro_fleet_adapter fleet.andino.launch.xml server_uri:="ws://localhost:8000/_internal"
 ros2 launch andino_rmf_sim andino_office.launch.py
 
 pkill -9 -f ros

@@ -15,28 +15,28 @@ def launch_servers(config: dict):
 
     for k,v in config.items():
         # topic remapping
-        topic_remappings = {
-            'velocity_topic': '/'+str(k)+'/cmd_vel',
-            'odom_topic': '/'+str(k)+'/odom',
-            'pose_topic': '/'+str(k)+'/current_pose',
-        }
+        # topic_remappings = {
+        #     'velocity_topic': '/'+str(k)+'/cmd_vel',
+        #     'odom_topic': '/'+str(k)+'/odom',
+        #     'pose_topic': '/'+str(k)+'/current_pose',
+        # }
         
         # launch description for 1 action server
         action_server = IncludeLaunchDescription(
             PythonLaunchDescriptionSource([
                 os.path.join(get_package_share_directory('andino_fleet'), 'launch'),
                 '/andino_controller.launch.py'
-            ]),
-            launch_arguments=topic_remappings.items()
+            ])
         )
         # wrap robot inside a namespace
-        robot_w_namespace = GroupAction(
-            actions=[
-                PushRosNamespace(str(k)),
-                action_server,
-            ]
-        )
-        robot_actions.append(robot_w_namespace)
+        # robot_w_namespace = GroupAction(
+        #     actions=[
+        #         PushRosNamespace(str(k)),
+        #         action_server,
+        #     ]
+        # )
+        # robot_actions.append(robot_w_namespace)
+        robot_actions.append(action_server)
 
     return robot_actions
 
@@ -65,7 +65,7 @@ def generate_launch_description():
             'robots:=', config_txt, ' ',
             'world_name:=', 'populated_office.sdf ',
             'map:=', 'office ',
-            'rviz:=', 'False',
+            'rviz:=', 'True',
         ]],
         shell=True
     )

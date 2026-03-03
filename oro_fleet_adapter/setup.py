@@ -33,7 +33,9 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'fleet_adapter=oro_fleet_adapter.fleet_adapter:main'
+            'fleet_adapter=oro_fleet_adapter.fleet_adapter:main',
+            'fleet_manager=oro_fleet_adapter.fleet_manager:main',
+            'manage_lane=oro_fleet_adapter.manage_lane:main',
         ],
     },
 )
