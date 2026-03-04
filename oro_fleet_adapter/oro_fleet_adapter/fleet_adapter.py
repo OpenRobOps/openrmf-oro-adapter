@@ -20,26 +20,16 @@ import sys
 import threading
 import time
 import nudged
+import yaml
 
 import rclpy
 from rclpy.duration import Duration
 import rclpy.node
 from rclpy.parameter import Parameter
-from rclpy.qos import qos_profile_system_default
-from rclpy.qos import QoSDurabilityPolicy as Durability
-from rclpy.qos import QoSHistoryPolicy as History
-from rclpy.qos import QoSProfile
-from rclpy.qos import QoSReliabilityPolicy as Reliability
 import rmf_adapter
 from rmf_adapter import Adapter
 import rmf_adapter.easy_full_control as rmf_easy
 from rmf_adapter import Transformation
-from rmf_fleet_msgs.msg import ClosedLanes
-from rmf_fleet_msgs.msg import LaneRequest
-from rmf_fleet_msgs.msg import ModeRequest
-from rmf_fleet_msgs.msg import RobotMode
-from rmf_fleet_msgs.msg import SpeedLimitRequest
-import yaml
 
 from .RobotClientAPI import RobotAPI
 from .RobotClientAPI import RobotAPIResult
@@ -198,10 +188,6 @@ def main(argv=sys.argv):
 
     update_thread = threading.Thread(target=update_loop, args=())
     update_thread.start()
-
-    # Connect to the extra ROS2 topics that are relevant for the adapter
-    # connections = ros_connections(node, robots, fleet_handle)
-    # connections  # Avoid unused variable warning
 
     # Create executor for the command handle node
     rclpy_executor = rclpy.executors.SingleThreadedExecutor()
@@ -488,102 +474,6 @@ def update_robot(robot: RobotAdapter):
         return
 
     robot.update(state, data)
-
-
-def ros_connections(node, robots, fleet_handle):
-    fleet_name = fleet_handle.more().fleet_name
-
-    transient_qos = QoSProfile(
-        history=History.KEEP_LAST,
-        depth=1,
-        reliability=Reliability.RELIABLE,
-        durability=Durability.TRANSIENT_LOCAL,
-    )
-
-    closed_lanes_pub = node.create_publisher(
-        ClosedLanes, 'closed_lanes', qos_profile=transient_qos
-    )
-
-    closed_lanes = set()
-
-    def lane_request_cb(msg):
-        if msg.fleet_name and msg.fleet_name != fleet_name:
-            print(f'Ignoring lane request for fleet [{msg.fleet_name}]')
-            return
-
-        if msg.open_lanes:
-            print(f'Opening lanes: {msg.open_lanes}')
-
-        if msg.close_lanes:
-            print(f'Closing lanes: {msg.close_lanes}')
-
-        fleet_handle.more().open_lanes(msg.open_lanes)
-        fleet_handle.more().close_lanes(msg.close_lanes)
-
-        for lane_idx in msg.close_lanes:
-            closed_lanes.add(lane_idx)
-
-        for lane_idx in msg.open_lanes:
-            if lane_idx in closed_lanes:
-                closed_lanes.remove(lane_idx)
-
-        state_msg = ClosedLanes()
-        state_msg.fleet_name = fleet_name
-        state_msg.closed_lanes = list(closed_lanes)
-        closed_lanes_pub.publish(state_msg)
-
-    def speed_limit_request_cb(msg):
-        if msg.fleet_name is None or msg.fleet_name != fleet_name:
-            return
-
-        requests = []
-        for limit in msg.speed_limits:
-            request = rmf_adapter.fleet_update_handle.SpeedLimitRequest(
-                limit.lane_index, limit.speed_limit)
-            requests.append(request)
-        fleet_handle.more().limit_lane_speeds(requests)
-        fleet_handle.more().remove_speed_limits(msg.remove_limits)
-
-    def mode_request_cb(msg):
-        if (
-            msg.fleet_name is None
-            or msg.fleet_name != fleet_name
-            or msg.robot_name is None
-        ):
-            return
-
-        if msg.mode.mode == RobotMode.MODE_IDLE:
-            robot = robots.get(msg.robot_name)
-            if robot is None:
-                return
-            robot.finish_action()
-
-    lane_request_sub = node.create_subscription(
-        LaneRequest,
-        'lane_closure_requests',
-        lane_request_cb,
-        qos_profile=qos_profile_system_default,
-    )
-
-    speed_limit_request_sub = node.create_subscription(
-        SpeedLimitRequest,
-        'speed_limit_requests',
-        speed_limit_request_cb,
-        qos_profile=qos_profile_system_default,
-    )
-
-    action_execution_notice_sub = node.create_subscription(
-        ModeRequest,
-        'action_execution_notice',
-        mode_request_cb,
-        qos_profile=qos_profile_system_default,
-    )
-
-    return [
-        lane_request_sub,
-        speed_limit_request_sub,
-        action_execution_notice_sub,
-    ]
 
 
 if __name__ == '__main__':
