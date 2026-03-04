@@ -247,14 +247,28 @@ class RobotAPI:
     ):
         ''' Request the robot to localize on target map. This 
             function should return True if the robot has accepted the 
-            request, else False '''
-        # ------------------------ #
-        # IMPLEMENT YOUR CODE HERE #
-        # ------------------------ #
-        #
+            request, else False 
+        '''
         robot_name = self.get_robot_id(robot_name)
-        # TODO: this is not implemented on inorbit api
-        return False
+        action_body = {
+            "actionId": "Relocalize-000000",
+            "parameters": {
+                "deltaPose": { 
+                    "x": pose[0], 
+                    "y": pose[1], 
+                    "theta": pose[2], 
+                    "frameId": map_name 
+                }
+            }
+        }
+        response = self.requester.post_request(
+            endpoint=f"robots/{robot_name}/actions",
+            json=action_body
+        )
+        if response is None:
+            self.logger.error("No response received from robot API server")
+            return False
+        return response.status_code == 200
 
     def start_activity(
         self, robot_name: str, cmd_id: int, activity: str, label: str
