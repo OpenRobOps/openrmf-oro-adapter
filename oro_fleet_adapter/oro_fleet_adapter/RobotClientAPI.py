@@ -184,7 +184,7 @@ class RobotAPI:
     def check_connection(self):
         ''' Return True if connection to the robot API server is successful '''
         response = self.requester.get_request(endpoint="robots")
-        if not response:
+        if response is None:
             self.logger.error("No response received from robot API server")
             return False
         return True
@@ -234,7 +234,7 @@ class RobotAPI:
             endpoint=f"robots/{robot_name}/navigation/waypoints",
             json=request_body
         )
-        if not response:
+        if response is None:
             self.logger.error("No response received from robot API server")
             return False
         return response.status_code == 200
@@ -275,7 +275,7 @@ class RobotAPI:
             endpoint=f"robots/{robot_name}/actions",
             json=action_body
         )
-        if not response:
+        if response is None:
             self.logger.error("No response received from robot API server")
             return False
         return response.status_code == 200
@@ -289,7 +289,7 @@ class RobotAPI:
             endpoint=f"robots/{robot_name}/actions",
             json=action_body
         )
-        if not response:
+        if response is None:
             self.logger.error("No response received from robot API server")
             return False
         return response.status_code == 200
@@ -302,7 +302,7 @@ class RobotAPI:
         response = self.requester.get_request(
             endpoint=f"robots/{robot_name}/localization/pose"
         )
-        if not response:
+        if response is None:
             self.logger.error("No response received from robot API server")
             return None
         response_json = response.json()
@@ -321,7 +321,7 @@ class RobotAPI:
         response = self.requester.get_request(
             endpoint=f"robots/{robot_name}/attributes/{attribute_id}"
         )
-        if not response:
+        if response is None:
             self.logger.error("No response received from robot API server")
             return None
         response_json = response.json()
@@ -348,7 +348,7 @@ class RobotAPI:
         response = self.requester.get_request(
             endpoint=f"robots/{robot_name}/maps/current"
         )
-        if not response:
+        if response is None:
             self.logger.error("No response received from robot API server")
             return None
         if response.status_code != 200:
