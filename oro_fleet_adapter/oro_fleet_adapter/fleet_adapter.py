@@ -218,12 +218,28 @@ class RobotAdapter:
         self.override = None
         self.issue_cmd_thread = None
         self.cancel_cmd_event = threading.Event()
+        self.target_position = None
 
     def update(self, state, data: RobotUpdateData):
         activity_identifier = None
         if self.execution:
-            if data.is_command_completed(self.cmd_id):
-                self.execution.finished()
+            is_finished = False
+
+            # --- ADD THIS NEW DISTANCE CHECK BLOCK ---
+            if self.target_position is not None:
+                dx = state.position[0] - self.target_position[0]
+                dy = state.position[1] - self.target_position[1]
+                dist = math.sqrt(dx**2 + dy**2)
+                
+                # If within 0.3 meters (30cm), consider it arrived!
+                if dist < 0.3: 
+                    is_finished = True
+                    self.target_position = None # Reset for the next task
+            # -----------------------------------------
+
+            # Modify the existing if statement to check our new is_finished flag
+            if is_finished or data.is_command_completed(self.cmd_id):
+                self.execution.finished() # This tells Open-RMF to send the next waypoint!
                 self.execution = None
                 self.teleoperation = None
             else:
@@ -274,6 +290,7 @@ class RobotAdapter:
     def navigate(self, destination, execution):
         self.cmd_id += 1
         self.execution = execution
+        self.target_position = destination.position
         self.node.get_logger().info(
             f'Commanding [{self.name}] to navigate to {destination.position} '
             f'on map [{destination.map}]: cmd_id {self.cmd_id}'
