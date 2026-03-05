@@ -21,7 +21,7 @@ def generate_launch_description():
     config_file = 'controller.yaml'
     andino_server_node = Node(
         package='andino_fleet',
-        executable='andino_server',
+        executable='andino_server_nav2',
         name='andino_server_node',
         parameters= [os.path.join(get_package_share_directory('andino_fleet'), 'config', config_file)],
         remappings=[

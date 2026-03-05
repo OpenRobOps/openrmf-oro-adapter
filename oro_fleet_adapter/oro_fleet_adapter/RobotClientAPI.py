@@ -28,45 +28,8 @@ import requests
 from .Requester import Requester
 from rclpy.impl.rcutils_logger import RcutilsLogger
 
-import time
-from controller_action_msg.msg import RobotPose
-from controller_action_msg.action import AndinoController
-from controller_action_msg.msg import RobotPose
-from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
-from geometry_msgs.msg import Quaternion
-from rclpy.action import ActionClient
-from rclpy.task import Future
-
-
-from collections import deque
+from geometry_msgs.msg import PoseStamped, Quaternion as MsgQuaternion
 from tf_transformations import quaternion_from_euler
-
-import math
-
-S  = 1.0113511241464097
-TH = -0.019629783198388227  # radians
-TX = 17.10965533
-TY = -12.94124537
-
-_C = math.cos(TH)
-_S = math.sin(TH)
-
-def robot_to_rmf(x: float, y: float, yaw: float):
-    xr = S * (_C * x - _S * y) + TX
-    yr = S * (_S * x + _C * y) + TY
-    yawr = yaw + TH
-    return [xr, yr, yawr]
-
-def rmf_to_robot(x: float, y: float, yaw: float):
-    # inverse of similarity transform
-    dx = x - TX
-    dy = y - TY
-    invS = 1.0 / S
-    # R(-TH) applied to (dx,dy)
-    xr = invS * (_C * dx + _S * dy)
-    yr = invS * (-_S * dx + _C * dy)
-    yawr = yaw - TH
-    return [xr, yr, yawr]
 
 
 class RobotAPIResult(enum.IntEnum):
@@ -86,14 +49,7 @@ class RobotAPI:
     # requirements of their robot's API
     def __init__(self, node, prefix: str, timeout: float, api_key: str, battery_attribute_id: str):
         self.node = node
-        self._pose_cache = {}   # robot_name -> [x,y,theta]
-        self._pose_time = {}    # robot_name -> time.time()
-        self._pose_subs = {}    # robot_name -> subscription
-        
-        action_name = f'/andino_controller'
-        
-        self._group1 = MutuallyExclusiveCallbackGroup()
-        self.controller_client = ActionClient(self.node, AndinoController, action_name, callback_group=self._group1)
+        self._nav2_goal_pub = self.node.create_publisher(PoseStamped, '/goal_pose', 10)
 
         self.prefix = prefix
         self.timeout = timeout
@@ -120,66 +76,24 @@ class RobotAPI:
         return robot_name.split('_')[-1]
         
     def send_goal(self, robot_name: str, goal):
-       # get a goal value
-       goal = goal
-       self.node.get_logger().debug(f'Goal to send: [{goal[0]}, {goal[1]}, {goal[2]}]\n')
-       # create goal msg
-       goal_msg = AndinoController.Goal()
-       goal_msg.goal_pose.pose.position.x = goal[0]
-       goal_msg.goal_pose.pose.position.y = goal[1]
-       quaternion = quaternion_from_euler(0, 0, goal[2])
-
-       orientation = Quaternion()
-       orientation.x = quaternion[0]
-       orientation.y = quaternion[1]
-       orientation.z = quaternion[2]
-       orientation.w = quaternion[3]
-       goal_msg.goal_pose.pose.orientation = orientation
-       # send goal async
-       if not self.controller_client.server_is_ready():
-           self.node.get_logger().info(f'{robot_name} controller server is not ready!')
-           return
-       
-       self._send_goal_future = self.controller_client.send_goal_async(goal_msg)
-       self._send_goal_future.add_done_callback(lambda future: self._goal_response_callback(robot_name, future))
-    
-    def _goal_response_callback(self, robot_name: str, future: Future):
-       goal_handle = future.result()
-       if not goal_handle.accepted:
-           self.node.get_logger().info('Goal rejected :(')
-           return
-       self.node.get_logger().info('Goal accepted :)')
-       self._get_result_future = goal_handle.get_result_async()
-       self._get_result_future.add_done_callback(lambda future: self._get_result_callback(robot_name, future))
-
-    def _get_result_callback(self, robot_name: str, future: Future):
-       result = future.result().result
-       # navigation completed successfully
-       self.node.get_logger().info('Result: {0}'.format(result.success))
-    
-    def ensure_pose_subscription(self, robot_name: str):
-        if robot_name in self._pose_subs:
-            return
-
-        topic = f"/current_pose"
-
-        def cb(msg: RobotPose):
-            if msg.current_pose is None or len(msg.current_pose) < 3:
-                self.node.get_logger().warn(
-                    f"Invalid current_pose from {topic}: {msg.current_pose}"
-                )
-                return
-            self._pose_cache[robot_name] = [
-                float(msg.current_pose[0]),
-                float(msg.current_pose[1]),
-                float(msg.current_pose[2]),
-            ]
-            self._pose_time[robot_name] = time.time()
-
-        self.node.get_logger().info(f"Subscribing to pose: {topic}")
-        self._pose_subs[robot_name] = self.node.create_subscription(
-            RobotPose, topic, cb, 10
-        )
+        # goal: [x, y, theta]
+        self.node.get_logger().debug(f'Goal to send: [{goal[0]}, {goal[1]}, {goal[2]}]\n')
+        # Create PoseStamped message
+        pose_msg = PoseStamped()
+        pose_msg.header.stamp = self.node.get_clock().now().to_msg()
+        pose_msg.header.frame_id = 'map'
+        pose_msg.pose.position.x = goal[0]
+        pose_msg.pose.position.y = goal[1]
+        pose_msg.pose.position.z = 0.0
+        quaternion = quaternion_from_euler(0, 0, goal[2])
+        orientation = MsgQuaternion()
+        orientation.x = quaternion[0]
+        orientation.y = quaternion[1]
+        orientation.z = quaternion[2]
+        orientation.w = quaternion[3]
+        pose_msg.pose.orientation = orientation
+        self._nav2_goal_pub.publish(pose_msg)
+        self.node.get_logger().info(f'Published goal to /goal_pose: x={goal[0]}, y={goal[1]}, theta={goal[2]}')
 
     def check_connection(self):
         ''' Return True if connection to the robot API server is successful '''
@@ -193,7 +107,7 @@ class RobotAPI:
         ''' Return True if the robot has completed its last command, else
         return False. '''
         # TODO: launch custom actions and see if the id is returned in the response, then check status of that id to determine if command is completed
-        return False
+        return True
     
     def navigate(
         self,
@@ -211,15 +125,10 @@ class RobotAPI:
         else False.
         """
         
-        ''' Request the robot to navigate to pose:[x,y,theta] where x, y and
-            and theta are in the robot's coordinate convention. This function
-            should return True if the robot has accepted the request,
-            else False '''
-        
         robot_name = self.get_robot_id(robot_name)
-        robot_goal = rmf_to_robot(pose[0], pose[1], pose[2])
+        # robot_goal = rmf_to_robot(pose[0], pose[1], pose[2])
         print(f"Received navigation request for {robot_name} to pose {pose} on map {map_name} with speed limit {speed_limit}")
-        self.send_goal(robot_name, robot_goal)
+        self.send_goal(robot_name, pose)
         return True
     
         request_body = {
@@ -345,7 +254,8 @@ class RobotAPI:
             return None
         # check that the battery soc value is between 0.0 and 1.0
         if response_json['value'] == '':
-            return 0.5
+            self.node.get_logger().error(f"Battery SoC value is empty string: {response_json}")
+            return None
         if not (0.0 <= float(response_json['value']) <= 1.0):
             self.logger.error(
                 f"Battery SoC value out of expected range [0.0, 1.0]: {response_json['value']}"

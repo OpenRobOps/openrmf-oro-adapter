@@ -25,6 +25,7 @@ setup(
     entry_points={
         'console_scripts': [
             'andino_server = andino_fleet.andino_controller_server:main',
+            'andino_server_nav2 = andino_fleet.andino_controller_server_nav2:main',
             'fleet_manager = andino_fleet.fleet_manager_server:main'
         ],
     },
