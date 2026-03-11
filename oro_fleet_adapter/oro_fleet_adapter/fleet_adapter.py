@@ -306,7 +306,6 @@ class RobotAdapter:
             cmd=self.api.navigate,
             args=(
                 self.name,
-                self.cmd_id,
                 destination.position,
                 destination.map,
                 destination.speed_limit,
@@ -386,7 +385,6 @@ class RobotAdapter:
                 # it as a regular navigation request
                 return self.api.navigate(
                     self.name,
-                    self.cmd_id,
                     destination.position,
                     destination.map,
                     destination.speed_limit,

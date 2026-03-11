@@ -112,7 +112,6 @@ class RobotAPI:
     def navigate(
         self,
         robot_name: str,
-        cmd_id: int,
         pose,
         map_name: str,
         speed_limit=0.0,
@@ -126,11 +125,8 @@ class RobotAPI:
         """
         
         robot_name = self.get_robot_id(robot_name)
-        # robot_goal = rmf_to_robot(pose[0], pose[1], pose[2])
-        print(f"Received navigation request for {robot_name} to pose {pose} on map {map_name} with speed limit {speed_limit}")
-        self.send_goal(robot_name, pose)
-        return True
-    
+        self.node.get_logger().info(f"Received navigation request for {robot_name} to pose {pose} on map {map_name} with speed limit {speed_limit}")
+        
         request_body = {
             "waypoints": [{
                 "frameId": map_name,
