@@ -21,26 +21,8 @@ be used by the RobotCommandHandle. For example, if your robot has a REST API,
 you will need to make http request calls to the appropriate endpoints within
 these functions.
 """
-import enum
-from urllib.error import HTTPError
-
-import requests
 from .Requester import Requester
 from rclpy.impl.rcutils_logger import RcutilsLogger
-
-from geometry_msgs.msg import PoseStamped, Quaternion as MsgQuaternion
-from tf_transformations import quaternion_from_euler
-
-
-class RobotAPIResult(enum.IntEnum):
-    SUCCESS = 0
-    """The request was successful"""
-
-    RETRY = 1
-    """The client failed to connect but might succeed if you try again"""
-
-    IMPOSSIBLE = 2
-    """The client connected but something about the request is impossible"""
 
 
 class RobotAPI:
@@ -66,7 +48,6 @@ class RobotAPI:
             timeout=self.timeout,
             logger=self.logger
         )
-        self.debug = False
     
     def get_robot_id(self, robot_name: str) -> str:
         """
@@ -74,26 +55,6 @@ class RobotAPI:
         Example: 'andino_123' -> '123'
         """
         return robot_name.split('_')[-1]
-        
-    def send_goal(self, robot_name: str, goal):
-        # goal: [x, y, theta]
-        self.node.get_logger().debug(f'Goal to send: [{goal[0]}, {goal[1]}, {goal[2]}]\n')
-        # Create PoseStamped message
-        pose_msg = PoseStamped()
-        pose_msg.header.stamp = self.node.get_clock().now().to_msg()
-        pose_msg.header.frame_id = 'map'
-        pose_msg.pose.position.x = goal[0]
-        pose_msg.pose.position.y = goal[1]
-        pose_msg.pose.position.z = 0.0
-        quaternion = quaternion_from_euler(0, 0, goal[2])
-        orientation = MsgQuaternion()
-        orientation.x = quaternion[0]
-        orientation.y = quaternion[1]
-        orientation.z = quaternion[2]
-        orientation.w = quaternion[3]
-        pose_msg.pose.orientation = orientation
-        self._nav2_goal_pub.publish(pose_msg)
-        self.node.get_logger().info(f'Published goal to /goal_pose: x={goal[0]}, y={goal[1]}, theta={goal[2]}')
 
     def check_connection(self):
         ''' Return True if connection to the robot API server is successful '''
@@ -180,7 +141,7 @@ class RobotAPI:
         return response.status_code == 200
 
     def start_activity(
-        self, robot_name: str, cmd_id: int, activity: str, label: str
+        self, robot_name: str, activity: str, label: str
     ):
         """
         Request the robot to begin a process.

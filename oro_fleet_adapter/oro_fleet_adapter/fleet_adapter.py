@@ -32,7 +32,6 @@ import rmf_adapter.easy_full_control as rmf_easy
 from rmf_adapter import Transformation
 
 from .RobotClientAPI import RobotAPI
-from .RobotClientAPI import RobotAPIResult
 from .RobotClientAPI import RobotUpdateData
 
 # ------------------------------------------------------------------------------
@@ -209,7 +208,6 @@ class RobotAdapter:
     ):
         self.name = name
         self.execution = None
-        self.teleoperation = None
         self.cmd_id = 0
         self.update_handle = None
         self.configuration = configuration
@@ -242,12 +240,9 @@ class RobotAdapter:
             if is_finished or data.is_command_completed(self.cmd_id):
                 self.execution.finished() # This tells Open-RMF to send the next waypoint!
                 self.execution = None
-                self.teleoperation = None
             else:
                 activity_identifier = self.execution.identifier
 
-        if self.teleoperation is not None:
-            self.teleoperation.update(data)
 
         self.update_handle.update(state, activity_identifier)
 
@@ -297,12 +292,6 @@ class RobotAdapter:
             f'on map [{destination.map}]: cmd_id {self.cmd_id}'
         )
 
-        if destination.dock is not None:
-            self.attempt_cmd_until_success(
-                cmd=self.perform_docking, args=(destination,)
-            )
-            return
-
         self.attempt_cmd_until_success(
             cmd=self.api.navigate,
             args=(
@@ -330,29 +319,9 @@ class RobotAdapter:
         self.execution = execution
         
         match category:
-            case 'teleop':
-                self.teleoperation = Teleoperation(execution)
-                self.attempt_cmd_until_success(
-                    cmd=self.api.toggle_teleop, args=(self.name, True)
-                )
-            case 'clean':
-                self.attempt_cmd_until_success(
-                    cmd=self.perform_clean, args=(description['zone'],)
-                )
-            case 'delivery_pickup':
-                self.attempt_cmd_until_success(
-                    cmd=self.api.toggle_attach, args=(
-                        self.name, True, self.cmd_id)
-                )
-            case 'delivery_dropoff':
-                self.attempt_cmd_until_success(
-                    cmd=self.api.toggle_attach, args=(
-                        self.name, False, self.cmd_id)
-                )
             case 'inorbit':
                 self.api.start_activity(
-                    robot_name=self.name, 
-                    cmd_id=self.cmd_id, 
+                    robot_name=self.name,
                     activity_name=description['name'], 
                     label='Custom'
                 )
@@ -364,53 +333,6 @@ class RobotAdapter:
         if self.execution is not None:
             self.execution.finished()
             self.execution = None
-            if self.teleoperation:
-                self.attempt_cmd_until_success(
-                    cmd=self.api.toggle_teleop, args=(self.name, False)
-                )
-                self.teleoperation = None
-
-    def perform_docking(self, destination):
-        match self.api.start_activity(
-            self.name, self.cmd_id, 'dock', destination.dock
-        ):
-            case (RobotAPIResult.SUCCESS, path):
-                self.override = self.execution.override_schedule(
-                    path['map_name'], path['path']
-                )
-                return True
-            case RobotAPIResult.RETRY:
-                return False
-            case RobotAPIResult.IMPOSSIBLE:
-                # If the fleet manager does not know this dock name, then treat
-                # it as a regular navigation request
-                return self.api.navigate(
-                    self.name,
-                    destination.position,
-                    destination.map,
-                    destination.speed_limit,
-                )
-
-    def perform_clean(self, zone):
-        match self.api.start_activity(self.name, self.cmd_id, 'clean', zone):
-            case (RobotAPIResult.SUCCESS, path):
-                self.node.get_logger().info(
-                    f'Commanding [{self.name}] to clean zone [{zone}]'
-                )
-                self.override = self.execution.override_schedule(
-                    path['map_name'], path['path']
-                )
-                return True
-            case RobotAPIResult.RETRY:
-                return False
-            case RobotAPIResult.IMPOSSIBLE:
-                self.node.get_logger().error(
-                    f'Fleet manager for [{self.name}] does not know how to '
-                    f'clean zone [{zone}]. We will terminate the activity.'
-                )
-                self.execution.finished()
-                self.execution = None
-                return True
 
     def attempt_cmd_until_success(self, cmd, args):
         self.cancel_cmd_attempt()
@@ -433,35 +355,6 @@ class RobotAdapter:
                 self.issue_cmd_thread.join()
                 self.issue_cmd_thread = None
         self.cancel_cmd_event.clear()
-
-
-class Teleoperation:
-
-    def __init__(self, execution):
-        self.execution = execution
-        self.override = None
-        self.last_position = None
-
-    def update(self, data: RobotUpdateData):
-        if self.last_position is None:
-            print(
-                'about to override schedule with '
-                f'{data.map}: {[data.position]}'
-            )
-            self.override = self.execution.override_schedule(
-                data.map, [data.position], 30.0
-            )
-            self.last_position = data.position
-        else:
-            dx = self.last_position[0] - data.position[0]
-            dy = self.last_position[1] - data.position[1]
-            dist = math.sqrt(dx * dx + dy * dy)
-            if dist > 0.1:
-                print('about to replace override schedule')
-                self.override = self.execution.override_schedule(
-                    data.map, [data.position], 30.0
-                )
-                self.last_position = data.position
 
 
 # Parallel processing solution derived from
