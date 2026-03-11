@@ -149,7 +149,8 @@ def main(argv=sys.argv):
         prefix= fleet_mgr_yaml['prefix'],
         timeout=fleet_mgr_yaml['timeout'],
         api_key=fleet_mgr_yaml['api_key'],
-        battery_attribute_id=fleet_mgr_yaml['battery_attribute_id']
+        battery_attribute_id=fleet_mgr_yaml['battery_attribute_id'],
+        map_attribute_id=fleet_mgr_yaml['map_attribute_id']
     )
 
     robots = {}

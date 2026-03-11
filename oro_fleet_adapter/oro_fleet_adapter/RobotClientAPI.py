@@ -47,9 +47,8 @@ class RobotAPI:
     # The constructor below accepts parameters typically required to submit
     # http requests. Users should modify the constructor as per the
     # requirements of their robot's API
-    def __init__(self, node, prefix: str, timeout: float, api_key: str, battery_attribute_id: str):
+    def __init__(self, node, prefix: str, timeout: float, api_key: str, battery_attribute_id: str, map_attribute_id: str):
         self.node = node
-        self._nav2_goal_pub = self.node.create_publisher(PoseStamped, '/goal_pose', 10)
 
         self.prefix = prefix
         self.timeout = timeout
@@ -60,6 +59,7 @@ class RobotAPI:
             'x-auth-inorbit-app-key': api_key
         }
         self.battery_attribute_id = battery_attribute_id
+        self.map_attribute_id = map_attribute_id
         self.requester = Requester(
             base_url=self.prefix,
             headers=self.headers,
@@ -154,14 +154,18 @@ class RobotAPI:
             function should return True if the robot has accepted the 
             request, else False 
         '''
+        # TODO: currently the localization uses a delta pose to update the robot's position.
+        # We just change the sign of the input pose to make it a delta pose. 
+        # This is because the robot's API only supports relative localization. 
+        # If the robot's API supports directly setting the robot's pose, we can modify this function to use that instead.
         robot_name = self.get_robot_id(robot_name)
         action_body = {
             "actionId": "Relocalize-000000",
             "parameters": {
                 "deltaPose": { 
-                    "x": pose[0], 
-                    "y": pose[1], 
-                    "theta": pose[2], 
+                    "x": -pose[0], 
+                    "y": -pose[1], 
+                    "theta": -pose[2],
                     "frameId": map_name 
                 }
             }
@@ -263,76 +267,19 @@ class RobotAPI:
         ''' Return the name of the map that the robot is currently on or
         None if any errors are encountered. '''
         robot_name = self.get_robot_id(robot_name)
-        return "L1"
-        # TODO: check that inorbit does not return anything just internal error.
         response = self.requester.get_request(
-            endpoint=f"robots/{robot_name}/maps/current"
+            endpoint=f"robots/{robot_name}/attributes/{self.map_attribute_id}"
         )
         if response is None:
             self.logger.error("No response received from robot API server")
             return None
-        if response.status_code != 200:
-            self.logger.error(f"Unexpected status code {response.status_code} from robot API server")
-            return None
         response_json = response.json()
-        # check if response_json has the expected key 'label'
-        if isinstance(response_json, list):
-            if not response_json:
-                self.logger.error("Response JSON is an empty list")
-                return None
-            response_json = response_json[0]
-        if 'label' not in response_json:
-            self.logger.error(f"Response JSON missing 'label' key: {response_json}")
+
+        # check if response_json has the expected key 'value'
+        if 'value' not in response_json:
+            self.logger.error(f"Response JSON missing 'value' key: {response_json}")
             return None
-            
-        return response_json['label']
-
-    def toggle_teleop(self, robot_name: str, toggle: bool):
-        """
-        Request to toggle the robot's mode_teleop parameter.
-
-        Return True if the toggle request is successful
-        """
-        url = (
-            self.prefix
-            + f'/open-rmf/rmf_demos_fm/toggle_teleop?robot_name={robot_name}'
-        )
-        data = {'toggle': toggle}
-        try:
-            response = requests.post(url, timeout=self.timeout, json=data)
-            response.raise_for_status()
-            if self.debug:
-                print(f'Response: {response.json()}')
-            return response.json()['success']
-        except HTTPError as http_err:
-            print(f'HTTP error for {robot_name} in toggle_teleop: {http_err}')
-        except Exception as err:
-            print(f'Other error {robot_name} in toggle_teleop: {err}')
-        return False
-
-    def toggle_attach(self, robot_name: str, attach: bool, cmd_id: int):
-        """
-        Request to attach or detach robot to/from cart.
-
-        Return True if the attach request is successful
-        """
-        url = (
-            self.prefix
-            + f'/open-rmf/rmf_demos_fm/toggle_attach?robot_name={robot_name}'
-            f'&cmd_id={cmd_id}'
-        )
-        data = {'toggle': attach}
-        try:
-            response = requests.post(url, timeout=self.timeout, json=data)
-            response.raise_for_status()
-            if self.debug:
-                print(f'Response: {response.json()}')
-            return response.json()['success']
-        except HTTPError as http_err:
-            print(f'HTTP error for {robot_name} in toggle_attach: {http_err}')
-        except Exception as err:
-            print(f'Other error {robot_name} in toggle_attach: {err}')
-        return False
+        return response_json['value']
 
     def get_data(self, robot_name: str | None = None):
         """

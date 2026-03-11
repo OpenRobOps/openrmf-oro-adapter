@@ -16,4 +16,7 @@
     <!-- <arg name="use_sim_time" value="$(var use_sim_time)"/> -->
   </include>
 
+  <!-- Launch battery_fake node -->
+  <node pkg="battery_fake" exec="battery_fake" output="screen" />
+
 </launch>

@@ -45,6 +45,7 @@ fleet_manager:
   timeout: 5.0
   api_key: "6_n2kuw8gi88XUJ6"
   battery_attribute_id: "evwkT2VZ9LLP1-bc"
+  map_attribute_id: "rosMasterStatus"
 
 
 reference_coordinates:
