@@ -208,7 +208,6 @@ class RobotAdapter:
     ):
         self.name = name
         self.execution = None
-        self.cmd_id = 0
         self.update_handle = None
         self.configuration = configuration
         self.node = node
@@ -218,32 +217,28 @@ class RobotAdapter:
         self.issue_cmd_thread = None
         self.cancel_cmd_event = threading.Event()
         self.target_position = None
+        self.current_action = None
 
-    def update(self, state, data: RobotUpdateData):
+    def update(self, state, robot_name):
         activity_identifier = None
         if self.execution:
             is_finished = False
-
-            # --- ADD THIS NEW DISTANCE CHECK BLOCK ---
             if self.target_position is not None:
                 dx = state.position[0] - self.target_position[0]
                 dy = state.position[1] - self.target_position[1]
                 dist = math.sqrt(dx**2 + dy**2)
-                
-                # If within 0.3 meters (30cm), consider it arrived!
                 if dist < 0.3: 
                     is_finished = True
-                    self.target_position = None # Reset for the next task
-            # -----------------------------------------
+                    self.target_position = None
+            else:
+                if self.current_action is not None and self.api.is_command_completed(robot_name):
+                    is_finished = True
 
-            # Modify the existing if statement to check our new is_finished flag
-            if is_finished or data.is_command_completed(self.cmd_id):
-                self.execution.finished() # This tells Open-RMF to send the next waypoint!
+            if is_finished:
+                self.execution.finished()
                 self.execution = None
             else:
                 activity_identifier = self.execution.identifier
-
-
         self.update_handle.update(state, activity_identifier)
 
     def make_callbacks(self):
@@ -284,47 +279,43 @@ class RobotAdapter:
                 self.update_handle.more().replan()
 
     def navigate(self, destination, execution):
-        self.cmd_id += 1
         self.execution = execution
         self.target_position = destination.position
         self.node.get_logger().info(
             f'Commanding [{self.name}] to navigate to {destination.position} '
-            f'on map [{destination.map}]: cmd_id {self.cmd_id}'
+            f'on map [{destination.map}]'
         )
-
-        self.attempt_cmd_until_success(
-            cmd=self.api.navigate,
-            args=(
-                self.name,
-                destination.position,
-                destination.map,
-                destination.speed_limit,
-            ),
+        self.api.navigate(
+            self.name,
+            destination.position,
+            destination.map,
+            destination.speed_limit
         )
 
     def stop(self, activity):
         if self.execution is not None:
             if self.execution.identifier.is_same(activity):
                 self.execution = None
-                running_cmd_id = self.cmd_id
-                self.cmd_id += 1
-                stop_cmd_id = self.cmd_id
-                self.attempt_cmd_until_success(
-                    cmd=self.api.stop,
-                    args=(self.name, running_cmd_id, stop_cmd_id)
-                )
+                self.api.stop(self.name)
+                
 
     def execute_action(self, category: str, description: dict, execution):
-        self.cmd_id += 1
         self.execution = execution
-        
+        # self.node.get_logger().info(
+        #     f'Commanding [{self.name}] to execute action [{category}] with'
+        #     f' description {description}'
+        # )
         match category:
             case 'inorbit':
-                self.api.start_activity(
+                self.node.get_logger().info(f"Executing 'inorbit' action for robot '{self.name}' with description: {description}")
+                accepted = self.api.start_activity(
                     robot_name=self.name,
-                    activity_name=description['name'], 
-                    label='Custom'
+                    activity=description.get('action_id', None), 
+                    label='Custom',
+                    activity_args=description.get('action_args', None)
                 )
+                if accepted:
+                    self.current_action = description.get('action_id', None)
 
     def finish_action(self):
         # This is triggered by a ModeRequest callback which allows human
@@ -333,29 +324,6 @@ class RobotAdapter:
         if self.execution is not None:
             self.execution.finished()
             self.execution = None
-
-    def attempt_cmd_until_success(self, cmd, args):
-        self.cancel_cmd_attempt()
-
-        def loop():
-            while not cmd(*args):
-                self.node.get_logger().warn(
-                    f'Failed to contact fleet manager for robot {self.name}'
-                )
-                if self.cancel_cmd_event.wait(1.0):
-                    break
-
-        self.issue_cmd_thread = threading.Thread(target=loop, args=())
-        self.issue_cmd_thread.start()
-
-    def cancel_cmd_attempt(self):
-        if self.issue_cmd_thread is not None:
-            self.cancel_cmd_event.set()
-            if self.issue_cmd_thread.is_alive():
-                self.issue_cmd_thread.join()
-                self.issue_cmd_thread = None
-        self.cancel_cmd_event.clear()
-
 
 # Parallel processing solution derived from
 # https://stackoverflow.com/a/59385935
@@ -378,11 +346,14 @@ def update_robot(robot: RobotAdapter):
 
     if robot.update_handle is None:
         robot.update_handle = robot.fleet_handle.add_robot(
-            robot.name, state, robot.configuration, robot.make_callbacks()
+            robot.name, 
+            state, 
+            robot.configuration, 
+            robot.make_callbacks()
         )
         return
 
-    robot.update(state, data)
+    robot.update(state, robot.name)
 
 
 if __name__ == '__main__':

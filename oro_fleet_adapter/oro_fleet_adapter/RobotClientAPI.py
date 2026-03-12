@@ -23,6 +23,8 @@ these functions.
 """
 from .Requester import Requester
 from rclpy.impl.rcutils_logger import RcutilsLogger
+from geometry_msgs.msg import PoseStamped, Quaternion as MsgQuaternion
+from tf_transformations import quaternion_from_euler
 
 
 class RobotAPI:
@@ -31,7 +33,8 @@ class RobotAPI:
     # requirements of their robot's API
     def __init__(self, node, prefix: str, timeout: float, api_key: str, battery_attribute_id: str, map_attribute_id: str):
         self.node = node
-
+        self._nav2_goal_pub = self.node.create_publisher(PoseStamped, '/goal_pose', 10)
+        
         self.prefix = prefix
         self.timeout = timeout
         self.logger = RcutilsLogger(f"RobotAPI ({prefix})")
@@ -48,6 +51,7 @@ class RobotAPI:
             timeout=self.timeout,
             logger=self.logger
         )
+        self.last_activity_id = None
     
     def get_robot_id(self, robot_name: str) -> str:
         """
@@ -64,11 +68,46 @@ class RobotAPI:
             return False
         return True
 
-    def is_command_completed(self):
+    def is_command_completed(self, robot_name: str):
         ''' Return True if the robot has completed its last command, else
         return False. '''
-        # TODO: launch custom actions and see if the id is returned in the response, then check status of that id to determine if command is completed
-        return True
+        robot_name = self.get_robot_id(robot_name)
+        if self.last_activity_id == None:
+            self.logger.info(f"No last activity recorded for robot '{robot_name}'")
+            return True
+        response = self.requester.get_request(
+            endpoint=f"robots/{robot_name}/actions/{self.last_activity_id}"
+        )
+        response_json = response.json()
+        
+        if response is None:
+            self.logger.error("No response received from robot API server")
+            return False
+        elif response_json.get('status', None) == 'finished':
+            self.logger.info(f"Activity '{self.last_activity_id}' for robot '{robot_name}' has completed")
+            self.last_activity_id = None
+            return True
+        return False
+
+    def send_goal(self, robot_name: str, goal):
+        # goal: [x, y, theta]
+        self.node.get_logger().debug(f'Goal to send: [{goal[0]}, {goal[1]}, {goal[2]}]\n')
+        # Create PoseStamped message
+        pose_msg = PoseStamped()
+        pose_msg.header.stamp = self.node.get_clock().now().to_msg()
+        pose_msg.header.frame_id = 'map'
+        pose_msg.pose.position.x = goal[0]
+        pose_msg.pose.position.y = goal[1]
+        pose_msg.pose.position.z = 0.0
+        quaternion = quaternion_from_euler(0, 0, goal[2])
+        orientation = MsgQuaternion()
+        orientation.x = quaternion[0]
+        orientation.y = quaternion[1]
+        orientation.z = quaternion[2]
+        orientation.w = quaternion[3]
+        pose_msg.pose.orientation = orientation
+        self._nav2_goal_pub.publish(pose_msg)
+        self.node.get_logger().info(f'Published goal to /goal_pose: x={goal[0]}, y={goal[1]}, theta={goal[2]}')
     
     def navigate(
         self,
@@ -86,8 +125,11 @@ class RobotAPI:
         """
         
         robot_name = self.get_robot_id(robot_name)
-        self.node.get_logger().info(f"Received navigation request for {robot_name} to pose {pose} on map {map_name} with speed limit {speed_limit}")
-        
+        # robot_goal = rmf_to_robot(pose[0], pose[1], pose[2])
+        print(f"Received navigation request for {robot_name} to pose {pose} on map {map_name} with speed limit {speed_limit}")
+        self.send_goal(robot_name, pose)
+        return True
+    
         request_body = {
             "waypoints": [{
                 "frameId": map_name,
@@ -141,7 +183,7 @@ class RobotAPI:
         return response.status_code == 200
 
     def start_activity(
-        self, robot_name: str, activity: str, label: str
+        self, robot_name: str, activity: str, label: str, activity_args: dict | None = None
     ):
         """
         Request the robot to begin a process.
@@ -152,8 +194,8 @@ class RobotAPI:
         """
         robot_name = self.get_robot_id(robot_name)
         action_body = {
-            "actionId": activity,
-            "parameters": {}
+            "actionId": f"{activity}",
+            "parameters": activity_args
         }
         response = self.requester.post_request(
             endpoint=f"robots/{robot_name}/actions",
@@ -162,13 +204,19 @@ class RobotAPI:
         if response is None:
             self.logger.error("No response received from robot API server")
             return False
+        response_json = response.json()
+        self.logger.info(f'Activity started for robot {robot_name}: {activity} with response: {response_json}')
+        self.last_activity_id = response_json.get('executionId', None)
         return response.status_code == 200
 
-    def stop(self, robot_name: str, running_cmd_id: int, stop_cmd_id: int):
+    def stop(self, robot_name: str):
         ''' Command the robot to stop.
             Return True if robot has successfully stopped. Else False. '''
+        if self.last_activity_id is None:
+            self.logger.error(f"No last activity recorded for robot '{robot_name}'. Cannot stop.")
+            return True
         robot_name = self.get_robot_id(robot_name)
-        action_body = {'actionId': 'CancelNavGoal-000000'}
+        action_body = {'actionId': self.last_activity_id, 'parameters': {}}
         response = self.requester.post_request(
             endpoint=f"robots/{robot_name}/actions",
             json=action_body
@@ -176,6 +224,7 @@ class RobotAPI:
         if response is None:
             self.logger.error("No response received from robot API server")
             return False
+        self.last_activity_id = None
         return response.status_code == 200
 
     def position(self, robot_name: str):
@@ -215,7 +264,7 @@ class RobotAPI:
             return None
         # check that the battery soc value is between 0.0 and 1.0
         if response_json['value'] == '':
-            self.node.get_logger().error(f"Battery SoC value is empty string: {response_json}")
+            self.logger.error(f"Battery SoC value is empty string: {response_json}")
             return None
         if not (0.0 <= float(response_json['value']) <= 1.0):
             self.logger.error(
@@ -263,8 +312,7 @@ class RobotUpdateData:
                  map: str,
                  position: list[float],
                  battery_soc: float,
-                 requires_replan: bool = False,
-                 last_completed_request: int = 0,
+                 requires_replan: bool | None = None
                  ):
         self.robot_name = robot_name
         x = position[0]
@@ -274,7 +322,3 @@ class RobotUpdateData:
         self.map = map
         self.battery_soc = battery_soc
         self.requires_replan = requires_replan
-        self.last_request_completed = last_completed_request
-
-    def is_command_completed(self, cmd_id):
-        return self.last_request_completed == cmd_id
