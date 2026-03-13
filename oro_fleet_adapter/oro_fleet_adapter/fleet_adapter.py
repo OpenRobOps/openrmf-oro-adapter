@@ -12,26 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import argparse
-import yaml
-import time
-import threading
 import asyncio
+import faulthandler
+import math
+import sys
+import threading
+import time
 import nudged
+import yaml
 
 import rclpy
+from rclpy.duration import Duration
 import rclpy.node
 from rclpy.parameter import Parameter
-from rclpy.duration import Duration
-
 import rmf_adapter
 from rmf_adapter import Adapter
 import rmf_adapter.easy_full_control as rmf_easy
 from rmf_adapter import Transformation
 
 from .RobotClientAPI import RobotAPI
-
+from .RobotClientAPI import RobotUpdateData
 
 # ------------------------------------------------------------------------------
 # Helper functions
@@ -57,24 +58,38 @@ def compute_transforms(level, coords, node=None):
 # Main
 # ------------------------------------------------------------------------------
 def main(argv=sys.argv):
+    faulthandler.enable()
     # Init rclpy and adapter
     rclpy.init(args=argv)
     rmf_adapter.init_rclcpp()
     args_without_ros = rclpy.utilities.remove_ros_args(argv)
 
     parser = argparse.ArgumentParser(
-        prog="fleet_adapter",
-        description="Configure and spin up the fleet adapter")
-    parser.add_argument("-c", "--config_file", type=str, required=True,
-                        help="Path to the config.yaml file")
-    parser.add_argument("-n", "--nav_graph", type=str, required=True,
-                        help="Path to the nav_graph for this fleet adapter")
-    parser.add_argument("-s", "--server_uri", type=str, required=False, default="",
-                        help="URI of the api server to transmit state and task information.")
-    parser.add_argument("-sim", "--use_sim_time", action="store_true",
-                        help='Use sim time, default: false')
+        prog='fleet_adapter',
+        description='Configure and spin up the fleet adapter',
+    )
+    parser.add_argument(
+        '-c',
+        '--config_file',
+        type=str,
+        required=True,
+        help='Path to the config.yaml file',
+    )
+    parser.add_argument(
+        '-n',
+        '--nav_graph',
+        type=str,
+        required=True,
+        help='Path to the nav_graph for this fleet adapter',
+    )
+    parser.add_argument(
+        '-sim',
+        '--use_sim_time',
+        action='store_true',
+        help='Use sim time, default: false',
+    )
     args = parser.parse_args(args_without_ros[1:])
-    print(f"Starting fleet adapter...")
+    print('Starting fleet adapter...')
 
     config_path = args.config_file
     nav_graph_path = args.nav_graph
@@ -85,7 +100,7 @@ def main(argv=sys.argv):
     assert fleet_config, f'Failed to parse config file [{config_path}]'
 
     # Parse the yaml in Python to get the fleet_manager info
-    with open(config_path, "r") as f:
+    with open(config_path, 'r') as f:
         config_yaml = yaml.safe_load(f)
 
     # ROS 2 node for the command handle
@@ -99,33 +114,42 @@ def main(argv=sys.argv):
 
     # Enable sim time for testing offline
     if args.use_sim_time:
-        param = Parameter("use_sim_time", Parameter.Type.BOOL, True)
+        param = Parameter('use_sim_time', Parameter.Type.BOOL, True)
         node.set_parameters([param])
         adapter.node.use_sim_time()
 
     adapter.start()
     time.sleep(1.0)
 
-    if args.server_uri == '':
+    node.declare_parameter('server_uri', '')
+    server_uri = (
+        node.get_parameter('server_uri').get_parameter_value().string_value
+    )
+    if server_uri == '':
         server_uri = None
-    else:
-        server_uri = args.server_uri
 
     fleet_config.server_uri = server_uri
-
+    
     # Configure the transforms between robot and RMF frames
     for level, coords in config_yaml['reference_coordinates'].items():
         tf = compute_transforms(level, coords, node)
         fleet_config.add_robot_coordinates_transformation(level, tf)
-
+    
     fleet_handle = adapter.add_easy_fleet(fleet_config)
+    fleet_handle.more().set_planner_cache_reset_size(2500)
 
     # Initialize robot API for this fleet
     fleet_mgr_yaml = config_yaml['fleet_manager']
+    update_period = 1.0 / fleet_mgr_yaml.get(
+        'robot_state_update_frequency', 10.0
+    )
     api = RobotAPI(
-        config_yaml=fleet_mgr_yaml,
-        prefix=fleet_mgr_yaml['prefix'],
-        timeout=fleet_mgr_yaml.get('timeout', 5.0)
+        node=node,
+        prefix= fleet_mgr_yaml['prefix'],
+        timeout=fleet_mgr_yaml['timeout'],
+        api_key=fleet_mgr_yaml['api_key'],
+        battery_attribute_id=fleet_mgr_yaml['battery_attribute_id'],
+        map_attribute_id=fleet_mgr_yaml['map_attribute_id']
     )
 
     robots = {}
@@ -135,11 +159,10 @@ def main(argv=sys.argv):
             robot_name, robot_config, node, api, fleet_handle
         )
 
-    update_period = 1.0/config_yaml['rmf_fleet'].get(
-        'robot_state_update_frequency', 10.0
-    )
-
     def update_loop():
+        reassign_task_interval = config_yaml['rmf_fleet'].get(
+            'reassign_task_interval', 60)  # seconds
+        last_task_replan = node.get_clock().now()
         asyncio.set_event_loop(asyncio.new_event_loop())
         while rclpy.ok():
             now = node.get_clock().now()
@@ -153,7 +176,13 @@ def main(argv=sys.argv):
                 asyncio.wait(update_jobs)
             )
 
-            next_wakeup = now + Duration(nanoseconds=update_period*1e9)
+            interval_sec = (now.nanoseconds -
+                            last_task_replan.nanoseconds) / 1e9
+            if interval_sec > reassign_task_interval:
+                fleet_handle.more().reassign_dispatched_tasks()
+                last_task_replan = now
+
+            next_wakeup = now + Duration(nanoseconds=update_period * 1e9)
             while node.get_clock().now() < next_wakeup:
                 time.sleep(0.001)
 
@@ -175,12 +204,7 @@ def main(argv=sys.argv):
 
 class RobotAdapter:
     def __init__(
-        self,
-        name: str,
-        configuration,
-        node,
-        api: RobotAPI,
-        fleet_handle
+        self, name: str, configuration, node, api: RobotAPI, fleet_handle
     ):
         self.name = name
         self.execution = None
@@ -189,17 +213,32 @@ class RobotAdapter:
         self.node = node
         self.api = api
         self.fleet_handle = fleet_handle
+        self.override = None
+        self.issue_cmd_thread = None
+        self.cancel_cmd_event = threading.Event()
+        self.target_position = None
+        self.current_action = None
 
-    def update(self, state):
+    def update(self, state, robot_name):
         activity_identifier = None
-        execution = self.execution
-        if execution:
-            if self.api.is_command_completed():
-                execution.finished()
+        if self.execution:
+            is_finished = False
+            if self.target_position is not None:
+                dx = state.position[0] - self.target_position[0]
+                dy = state.position[1] - self.target_position[1]
+                dist = math.sqrt(dx**2 + dy**2)
+                if dist < 0.3: 
+                    is_finished = True
+                    self.target_position = None
+            else:
+                if self.current_action is not None and self.api.is_command_completed(robot_name):
+                    is_finished = True
+
+            if is_finished:
+                self.execution.finished()
                 self.execution = None
             else:
-                activity_identifier = execution.identifier
-
+                activity_identifier = self.execution.identifier
         self.update_handle.update(state, activity_identifier)
 
     def make_callbacks(self):
@@ -219,6 +258,7 @@ class RobotAdapter:
 
         return callbacks
 
+    
     def localize(self, estimate, execution):
         self.node.get_logger().info(
             f'Commanding [{self.name}] to change map to'
@@ -240,11 +280,11 @@ class RobotAdapter:
 
     def navigate(self, destination, execution):
         self.execution = execution
+        self.target_position = destination.position
         self.node.get_logger().info(
             f'Commanding [{self.name}] to navigate to {destination.position} '
             f'on map [{destination.map}]'
         )
-
         self.api.navigate(
             self.name,
             destination.position,
@@ -253,22 +293,37 @@ class RobotAdapter:
         )
 
     def stop(self, activity):
-        execution = self.execution
-        if execution is not None:
-            if execution.identifier.is_same(activity):
+        if self.execution is not None:
+            if self.execution.identifier.is_same(activity):
                 self.execution = None
                 self.api.stop(self.name)
+                
 
     def execute_action(self, category: str, description: dict, execution):
-        ''' Trigger a custom action you would like your robot to perform.
-        You may wish to use RobotAPI.start_activity to trigger different
-        types of actions to your robot.'''
         self.execution = execution
-        # ------------------------ #
-        # IMPLEMENT YOUR CODE HERE #
-        # ------------------------ #
-        return
+        # self.node.get_logger().info(
+        #     f'Commanding [{self.name}] to execute action [{category}] with'
+        #     f' description {description}'
+        # )
+        match category:
+            case 'inorbit':
+                self.node.get_logger().info(f"Executing 'inorbit' action for robot '{self.name}' with description: {description}")
+                accepted = self.api.start_activity(
+                    robot_name=self.name,
+                    activity=description.get('action_id', None), 
+                    label='Custom',
+                    activity_args=description.get('action_args', None)
+                )
+                if accepted:
+                    self.current_action = description.get('action_id', None)
 
+    def finish_action(self):
+        # This is triggered by a ModeRequest callback which allows human
+        # operators to manually change the operational mode of the robot. This
+        # is typically used to indicate when teleoperation has finished.
+        if self.execution is not None:
+            self.execution.finished()
+            self.execution = None
 
 # Parallel processing solution derived from
 # https://stackoverflow.com/a/59385935
@@ -287,22 +342,18 @@ def update_robot(robot: RobotAdapter):
     if data is None:
         return
 
-    state = rmf_easy.RobotState(
-        data.map,
-        data.position,
-        data.battery_soc
-    )
+    state = rmf_easy.RobotState(data.map, data.position, data.battery_soc)
 
     if robot.update_handle is None:
         robot.update_handle = robot.fleet_handle.add_robot(
-            robot.name,
-            state,
-            robot.configuration,
+            robot.name, 
+            state, 
+            robot.configuration, 
             robot.make_callbacks()
         )
         return
 
-    robot.update(state)
+    robot.update(state, robot.name)
 
 
 if __name__ == '__main__':

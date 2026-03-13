@@ -4,16 +4,16 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: oro_fleet_adapter
+    image: andino_inorbit_rmf
     hostname: oro_fleet_adapter
     container_name: oro_fleet_adapter
     network_mode: host
     volumes:
-      - ..:/home/docker/dev_ws/src
+      - ..:${HOME}/ws/src/openrmf-oro-adapter:rw
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ../inorbit:${HOME}/.inorbit/local/:rw
     tty: true
     stdin_open: true
-    entrypoint: /bin/bash
     privileged: true
     deploy:
       resources:
@@ -33,7 +33,8 @@ services:
       # - LIBGL_ALWAYS_SOFTWARE=1
 
       - ROS_DOMAIN_ID=1
-      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp 
+      - CYCLONEDDS_URI=<CycloneDDS><Domain><Discovery><ParticipantIndex>auto</ParticipantIndex><MaxAutoParticipantIndex>200</MaxAutoParticipantIndex></Discovery><SharedMemory><Enable>false</Enable></SharedMemory></Domain></CycloneDDS>
   
   api_server:
     image: ghcr.io/open-rmf/rmf-web/api-server:jazzy-nightly
@@ -55,6 +56,9 @@ services:
     network_mode: host
     ports:
       - "3000:3000"
+    environment:
+      - RMF_SERVER_URL=http://localhost:8000
+      - TRAJECTORY_SERVER_URL=ws://localhost:8006
     tty: true
     stdin_open: true
 
@@ -69,3 +73,17 @@ services:
     volumes:
       - ../mock_api_server/mock.json:/data/mock.json:ro
     command: ["-d", "/data/mock.json", "-p", "3000"]
+
+  # inorbit_agent:
+  #   image: "inorbitai/agent:ros-jazzy-4.23.0"
+  #   container_name: "inorbit_agent"
+  #   privileged: true
+  #   ipc: host
+  #   pid: host       
+  #   network_mode: "host"
+  #   depends_on:
+  #     - "oro_fleet_adapter"
+  #   restart: "always"
+  #   volumes:
+  #     - ../inorbit/data:/root/.inorbit/local/
+  #     - ../inorbit/agent.env.sh:/root/.inorbit/local/agent.env.sh

@@ -15,7 +15,7 @@ class Requester:
         url = f"{self.base_url}{endpoint}"
         try:
             res = requests.get(url, headers=self.headers, json=json, timeout=self.timeout)
-            if res.status_code >= 300:
+            if res.status_code != 200:
                 self.logger.warn(
                     f"\nStatus code {res.status_code} on GET {url} "
                     f"with body {json}\nmessage: {res.text}")
@@ -29,7 +29,7 @@ class Requester:
         url = f"{self.base_url}{endpoint}"
         try:
             res = requests.post(url, headers=self.headers, json=json, timeout=self.timeout)
-            if res.status_code >= 300:
+            if res.status_code != 200:
                 self.logger.warn(
                     f"\nStatus code {res.status_code} on POST {url} "
                     f"with body {json}\nmessage: {res.text}")

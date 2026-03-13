@@ -1,10 +1,3 @@
-# FLEET CONFIG =================================================================
-# RMF Fleet parameters
-
-fleet_manager:
-  prefix: "http://127.0.0.1:3001/"
-  timeout: 5.0
-
 rmf_fleet:
   name: "ORO"
   limits:
@@ -33,8 +26,8 @@ rmf_fleet:
   task_capabilities: # Specify the types of RMF Tasks that robots in this fleet are capable of performing
     loop: True
     delivery: True
-  actions: ["teleop"]
-  finishing_request: "charge" # [park, charge, nothing]
+  actions: ["clean", "inorbit"] # Specify the types of RMF Actions that robots in this fleet are capable of performing
+  finishing_request: "nothing" # [park, charge, nothing]
   responsive_wait: False # Should responsive wait be on/off for the whole fleet by default? False if not specified.
   use_parking_reservations: True
   reassign_task_interval: 120 # seconds, specify how often a task reassignment should be triggered in the fleet
@@ -52,25 +45,33 @@ rmf_fleet:
     options:
       busy_mode: "Binary"   # [Binary, Count]
   robots:
-    tinyRobot1:
+    tinyRobot1_620918333:
         charger: "tinyRobot1_charger"
-        finishing_request: # Optionally define any robot-specific finishing request. Overrides the fleet-wide setting.
-          type: "park" # [park, charge, nothing]
-          waypoint_name: "supplies" # This is a required field if the finishing_request type is "park"
-        responsive_wait: False # Should responsive wait be on/off for this specific robot? Overrides the fleet-wide setting.
-    tinyRobot2:
-        charger: "tinyRobot2_charger"
+    # tinyRobot2:
+    #     charger: "tinyRobot2_charger"
         # No mention of responsive_wait means the fleet-wide setting will be used
+
+fleet_manager:
+  prefix: "http://localhost:3001/"
+  timeout: 5.0
+  api_key: "6_n2kuw8gi88XUJ6"
+  battery_attribute_id: "evwkT2VZ9LLP1-bc"
+
+# fleet_manager:
+#   prefix: "http://127.0.0.1:22011/"
+#   port: 22011
+#   user: "some_user"
+#   password: "some_password"
 
 reference_coordinates:
   L1:
-    rmf:
+    rmf: 
       - [0.0, 0.0]
       - [1.0, 1.0]
       - [2.0, 2.0]
       - [3.0, 3.0]
-    robot:
-      - [0.0, 0.0]
+    robot: 
+      - [0.0, 0.0 ]
       - [1.0, 1.0]
       - [2.0, 2.0]
       - [3.0, 3.0]
