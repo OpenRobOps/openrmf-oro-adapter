@@ -65,12 +65,12 @@ fleet_manager:
 
 reference_coordinates:
   L1:
-    rmf: 
+    rmf:
       - [0.0, 0.0]
       - [1.0, 1.0]
       - [2.0, 2.0]
       - [3.0, 3.0]
-    robot: 
+    robot:
       - [0.0, 0.0 ]
       - [1.0, 1.0]
       - [2.0, 2.0]
