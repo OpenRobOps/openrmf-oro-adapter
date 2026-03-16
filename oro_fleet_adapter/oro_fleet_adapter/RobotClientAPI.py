@@ -23,18 +23,12 @@ these functions.
 """
 from .Requester import Requester
 from rclpy.impl.rcutils_logger import RcutilsLogger
-from geometry_msgs.msg import PoseStamped, Quaternion as MsgQuaternion
-from tf_transformations import quaternion_from_euler
-
 
 class RobotAPI:
     # The constructor below accepts parameters typically required to submit
     # http requests. Users should modify the constructor as per the
     # requirements of their robot's API
-    def __init__(self, node, prefix: str, timeout: float, api_key: str, battery_attribute_id: str, map_attribute_id: str):
-        self.node = node
-        self._nav2_goal_pub = self.node.create_publisher(PoseStamped, '/goal_pose', 10)
-        
+    def __init__(self, prefix: str, timeout: float, api_key: str, battery_attribute_id: str, map_attribute_id: str):
         self.prefix = prefix
         self.timeout = timeout
         self.logger = RcutilsLogger(f"RobotAPI ({prefix})")
@@ -88,26 +82,6 @@ class RobotAPI:
             self.last_activity_id = None
             return True
         return False
-
-    def send_goal(self, robot_name: str, goal):
-        # goal: [x, y, theta]
-        self.node.get_logger().debug(f'Goal to send: [{goal[0]}, {goal[1]}, {goal[2]}]\n')
-        # Create PoseStamped message
-        pose_msg = PoseStamped()
-        pose_msg.header.stamp = self.node.get_clock().now().to_msg()
-        pose_msg.header.frame_id = 'map'
-        pose_msg.pose.position.x = goal[0]
-        pose_msg.pose.position.y = goal[1]
-        pose_msg.pose.position.z = 0.0
-        quaternion = quaternion_from_euler(0, 0, goal[2])
-        orientation = MsgQuaternion()
-        orientation.x = quaternion[0]
-        orientation.y = quaternion[1]
-        orientation.z = quaternion[2]
-        orientation.w = quaternion[3]
-        pose_msg.pose.orientation = orientation
-        self._nav2_goal_pub.publish(pose_msg)
-        self.node.get_logger().info(f'Published goal to /goal_pose: x={goal[0]}, y={goal[1]}, theta={goal[2]}')
     
     def navigate(
         self,
@@ -125,11 +99,8 @@ class RobotAPI:
         """
         
         robot_name = self.get_robot_id(robot_name)
-        # robot_goal = rmf_to_robot(pose[0], pose[1], pose[2])
-        print(f"Received navigation request for {robot_name} to pose {pose} on map {map_name} with speed limit {speed_limit}")
-        self.send_goal(robot_name, pose)
-        return True
-    
+        self.logger.info(f"Received navigation request for {robot_name} to pose {pose} on map {map_name} with speed limit {speed_limit}")
+        
         request_body = {
             "waypoints": [{
                 "frameId": map_name,

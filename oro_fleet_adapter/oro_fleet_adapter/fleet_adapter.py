@@ -32,7 +32,6 @@ import rmf_adapter.easy_full_control as rmf_easy
 from rmf_adapter import Transformation
 
 from .RobotClientAPI import RobotAPI
-from .RobotClientAPI import RobotUpdateData
 
 # ------------------------------------------------------------------------------
 # Helper functions
@@ -144,7 +143,6 @@ def main(argv=sys.argv):
         'robot_state_update_frequency', 10.0
     )
     api = RobotAPI(
-        node=node,
         prefix= fleet_mgr_yaml['prefix'],
         timeout=fleet_mgr_yaml['timeout'],
         api_key=fleet_mgr_yaml['api_key'],
