@@ -43,6 +43,7 @@ class RobotAPI:
         self.map_attribute_id = map_attribute_id
         self.requester = Requester(base_url=self.prefix, headers=self.headers, timeout=self.timeout, logger=self.logger)
         self.last_activity_id = None
+        self.current_action = None
 
     def get_robot_id(self, robot_name: str) -> str:
         """Extracts the last part of a robot name split by underscore.
@@ -159,7 +160,10 @@ class RobotAPI:
         response_json = response.json()
         self.logger.info(f"Activity started for robot {robot_name}: {activity} with response: {response_json}")
         self.last_activity_id = response_json.get("executionId", None)
-        return response.status_code == self.requester.HTTP_OK
+        if response.status_code == self.requester.HTTP_OK:
+            self.current_action = self.last_activity_id
+            return True
+        return False
 
     def stop(self, robot_name: str):
         """Command the robot to stop.

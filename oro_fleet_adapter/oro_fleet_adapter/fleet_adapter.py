@@ -193,7 +193,6 @@ class RobotAdapter:
         self.issue_cmd_thread = None
         self.cancel_cmd_event = threading.Event()
         self.target_position = None
-        self.current_action = None
         self.LOCALIZATION_TOLERANCE = 0.3
 
     def update(self, state, robot_name):
@@ -207,7 +206,7 @@ class RobotAdapter:
                 if dist < self.LOCALIZATION_TOLERANCE:
                     is_finished = True
                     self.target_position = None
-            elif self.current_action is not None and self.api.is_command_completed(robot_name):
+            elif self.api.current_action is not None and self.api.is_command_completed(robot_name):
                 is_finished = True
 
             if is_finished:
@@ -268,14 +267,12 @@ class RobotAdapter:
                 self.node.get_logger().info(
                     f"Executing 'inorbit' action for robot '{self.name}' with description: {description}"
                 )
-                accepted = self.api.start_activity(
+                self.api.start_activity(
                     robot_name=self.name,
                     activity=description.get("action_id", None),
                     label="Custom",
                     activity_args=description.get("action_args", None),
                 )
-                if accepted:
-                    self.current_action = description.get("action_id", None)
 
     def finish_action(self):
         # This is triggered by a ModeRequest callback which allows human
