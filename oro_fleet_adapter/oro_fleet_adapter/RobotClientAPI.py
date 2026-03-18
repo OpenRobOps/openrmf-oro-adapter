@@ -70,12 +70,12 @@ class RobotAPI:
             self.logger.info(f"No last activity recorded for robot '{robot_name}'")
             return True
         response = self.requester.get_request(endpoint=f"robots/{robot_name}/actions/{self.last_activity_id}")
-        response_json = response.json()
 
         if response is None:
             self.logger.error("No response received from robot API server")
             return False
 
+        response_json = response.json()
         if response_json.get("status", None) == "finished":
             self.logger.info(f"Activity '{self.last_activity_id}' for robot '{robot_name}' has completed")
             self.last_activity_id = None
