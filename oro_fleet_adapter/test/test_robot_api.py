@@ -40,25 +40,22 @@ class FakeResponse:
 @pytest.fixture
 def robot_api():
     api = RobotAPI(
-        prefix="http://localhost:3001",
+        prefix='http://localhost:3001',
         timeout=5.0,
-        api_key="test-api-key",
-        battery_attribute_id="battery",
-        map_attribute_id="map",
+        api_key='test-api-key',
+        robot_id='robot_id',
+        battery_attribute_id='battery',
+        map_attribute_id='map',
     )
     api.requester = Mock()
     api.requester.HTTP_OK = 200
     return api
 
 
-def test_get_robot_id(robot_api):
-    assert robot_api.get_robot_id("andino_123") == "123"
-
-
 def test_check_connection_success(robot_api):
     robot_api.requester.get_request.return_value = FakeResponse()
     assert robot_api.check_connection() is True
-    robot_api.requester.get_request.assert_called_once_with(endpoint="robots")
+    robot_api.requester.get_request.assert_called_once_with(endpoint='robots')
 
 
 def test_check_connection_failure(robot_api):
@@ -68,53 +65,54 @@ def test_check_connection_failure(robot_api):
 
 def test_is_command_completed_without_last_activity(robot_api):
     robot_api.last_activity_id = None
-    assert robot_api.is_command_completed("andino_1") is True
+    assert robot_api.is_command_completed() is True
 
 
 def test_is_command_completed_finished(robot_api):
-    robot_api.last_activity_id = "exec-001"
-    robot_api.requester.get_request.return_value = FakeResponse(payload={"status": "finished"})
+    robot_api.last_activity_id = 'exec-001'
+    robot_api.requester.get_request.return_value = FakeResponse(payload={'status': 'finished'})
 
-    assert robot_api.is_command_completed("andino_1") is True
+    assert robot_api.is_command_completed() is True
     assert robot_api.last_activity_id is None
-    robot_api.requester.get_request.assert_called_once_with(endpoint="robots/1/actions/exec-001")
+    robot_api.requester.get_request.assert_called_once_with(
+        endpoint='robots/robot_id/actions/exec-001'
+    )
 
 
 def test_is_command_completed_not_finished(robot_api):
-    robot_api.last_activity_id = "exec-001"
-    robot_api.requester.get_request.return_value = FakeResponse(payload={"status": "running"})
+    robot_api.last_activity_id = 'exec-001'
+    robot_api.requester.get_request.return_value = FakeResponse(payload={'status': 'running'})
 
-    assert robot_api.is_command_completed("andino_1") is False
-    assert robot_api.last_activity_id == "exec-001"
+    assert robot_api.is_command_completed() is False
+    assert robot_api.last_activity_id == 'exec-001'
 
 
 def test_is_command_completed_none_response(robot_api):
-    robot_api.last_activity_id = "exec-001"
+    robot_api.last_activity_id = 'exec-001'
     robot_api.requester.get_request.return_value = None
 
-    assert robot_api.is_command_completed("andino_1") is False
+    assert robot_api.is_command_completed() is False
 
 
 def test_navigate_success(robot_api):
     robot_api.requester.post_request.return_value = FakeResponse(status_code=200)
 
     result = robot_api.navigate(
-        robot_name="andino_7",
         pose=[1.0, 2.0, 3.14],
-        map_name="L1",
+        map_name='L1',
         speed_limit=0.5,
     )
 
     assert result is True
     robot_api.requester.post_request.assert_called_once_with(
-        endpoint="robots/7/navigation/waypoints",
+        endpoint='robots/robot_id/navigation/waypoints',
         json={
-            "waypoints": [
+            'waypoints': [
                 {
-                    "frameId": "L1",
-                    "x": 1.0,
-                    "y": 2.0,
-                    "theta": 3.14,
+                    'frameId': 'L1',
+                    'x': 1.0,
+                    'y': 2.0,
+                    'theta': 3.14,
                 }
             ]
         },
@@ -125,9 +123,8 @@ def test_navigate_failure_on_none_response(robot_api):
     robot_api.requester.post_request.return_value = None
 
     result = robot_api.navigate(
-        robot_name="andino_7",
         pose=[1.0, 2.0, 3.14],
-        map_name="L1",
+        map_name='L1',
     )
 
     assert result is False
@@ -137,22 +134,21 @@ def test_localize_success(robot_api):
     robot_api.requester.post_request.return_value = FakeResponse(status_code=200)
 
     result = robot_api.localize(
-        robot_name="andino_5",
         pose=[1.0, -2.0, 0.5],
-        map_name="L2",
+        map_name='L2',
     )
 
     assert result is True
     robot_api.requester.post_request.assert_called_once_with(
-        endpoint="robots/5/actions",
+        endpoint='robots/robot_id/actions',
         json={
-            "actionId": "Relocalize-000000",
-            "parameters": {
-                "deltaPose": {
-                    "x": -1.0,
-                    "y": 2.0,
-                    "theta": -0.5,
-                    "frameId": "L2",
+            'actionId': 'Relocalize-000000',
+            'parameters': {
+                'deltaPose': {
+                    'x': -1.0,
+                    'y': 2.0,
+                    'theta': -0.5,
+                    'frameId': 'L2',
                 }
             },
         },
@@ -162,24 +158,23 @@ def test_localize_success(robot_api):
 def test_start_activity_success(robot_api):
     robot_api.requester.post_request.return_value = FakeResponse(
         status_code=200,
-        payload={"executionId": "activity-123"},
+        payload={'executionId': 'activity-123'},
     )
 
     result = robot_api.start_activity(
-        robot_name="andino_9",
-        activity="dock",
-        label="Dock robot",
-        activity_args={"dock_name": "charger_1"},
+        activity='dock',
+        label='Dock robot',
+        activity_args={'dock_name': 'charger_1'},
     )
 
     assert result is True
-    assert robot_api.last_activity_id == "activity-123"
-    assert robot_api.current_action == "activity-123"
+    assert robot_api.last_activity_id == 'activity-123'
+    assert robot_api.current_action == 'activity-123'
     robot_api.requester.post_request.assert_called_once_with(
-        endpoint="robots/9/actions",
+        endpoint='robots/robot_id/actions',
         json={
-            "actionId": "dock",
-            "parameters": {"dock_name": "charger_1"},
+            'actionId': 'dock',
+            'parameters': {'dock_name': 'charger_1'},
         },
     )
 
@@ -187,108 +182,115 @@ def test_start_activity_success(robot_api):
 def test_start_activity_failure_status_code(robot_api):
     robot_api.requester.post_request.return_value = FakeResponse(
         status_code=400,
-        payload={"executionId": "activity-123"},
+        payload={'executionId': 'activity-123'},
     )
 
     result = robot_api.start_activity(
-        robot_name="andino_9",
-        activity="dock",
-        label="Dock robot",
-        activity_args={"dock_name": "charger_1"},
+        activity='dock',
+        label='Dock robot',
+        activity_args={'dock_name': 'charger_1'},
     )
 
     assert result is False
-    assert robot_api.last_activity_id == "activity-123"
+    assert robot_api.last_activity_id == 'activity-123'
     assert robot_api.current_action is None
 
 
 def test_stop_without_last_activity(robot_api):
     robot_api.last_activity_id = None
-    assert robot_api.stop("andino_2") is True
+    assert robot_api.stop() is True
 
 
 def test_stop_success(robot_api):
-    robot_api.last_activity_id = "activity-999"
+    robot_api.last_activity_id = 'activity-999'
     robot_api.requester.post_request.return_value = FakeResponse(status_code=200)
 
-    result = robot_api.stop("andino_2")
+    result = robot_api.stop()
 
     assert result is True
     assert robot_api.last_activity_id is None
     robot_api.requester.post_request.assert_called_once_with(
-        endpoint="robots/2/actions",
-        json={"actionId": "activity-999", "parameters": {}},
+        endpoint='robots/robot_id/actions',
+        json={'actionId': 'activity-999', 'parameters': {}},
     )
 
 
 def test_position_success(robot_api):
-    robot_api.requester.get_request.return_value = FakeResponse(payload={"x": 1, "y": 2.5, "theta": -0.75})
+    robot_api.requester.get_request.return_value = FakeResponse(
+        payload={'x': 1, 'y': 2.5, 'theta': -0.75}
+    )
 
-    result = robot_api.position("andino_3")
+    result = robot_api.position()
 
     assert result == [1.0, 2.5, -0.75]
-    robot_api.requester.get_request.assert_called_once_with(endpoint="robots/3/localization/pose")
+    robot_api.requester.get_request.assert_called_once_with(
+        endpoint='robots/robot_id/localization/pose'
+    )
 
 
 def test_position_missing_keys(robot_api):
-    robot_api.requester.get_request.return_value = FakeResponse(payload={"x": 1, "y": 2.5})
+    robot_api.requester.get_request.return_value = FakeResponse(payload={'x': 1, 'y': 2.5})
 
-    assert robot_api.position("andino_3") is None
+    assert robot_api.position() is None
 
 
 def test_position_none_response(robot_api):
     robot_api.requester.get_request.return_value = None
-    assert robot_api.position("andino_3") is None
+    assert robot_api.position() is None
 
 
 def test_battery_soc_success(robot_api):
-    robot_api.requester.get_request.return_value = FakeResponse(payload={"value": EXPECTED_SOC})
+    robot_api.requester.get_request.return_value = FakeResponse(payload={'value': EXPECTED_SOC})
 
-    result = robot_api.battery_soc("andino_4")
+    result = robot_api.battery_soc()
 
     assert result == EXPECTED_SOC
-    robot_api.requester.get_request.assert_called_once_with(endpoint="robots/4/attributes/battery")
+    robot_api.requester.get_request.assert_called_once_with(
+        endpoint='robots/robot_id/attributes/battery'
+    )
 
 
 def test_battery_soc_missing_value(robot_api):
     robot_api.requester.get_request.return_value = FakeResponse(payload={})
-    assert robot_api.battery_soc("andino_4") is None
+    assert robot_api.battery_soc() is None
 
 
 def test_battery_soc_empty_string(robot_api):
-    robot_api.requester.get_request.return_value = FakeResponse(payload={"value": ""})
-    assert robot_api.battery_soc("andino_4") is None
+    robot_api.requester.get_request.return_value = FakeResponse(payload={'value': ''})
+    assert robot_api.battery_soc() is None
 
 
 def test_battery_soc_out_of_range(robot_api):
-    robot_api.requester.get_request.return_value = FakeResponse(payload={"value": 1.5})
-    assert robot_api.battery_soc("andino_4") is None
+    robot_api.requester.get_request.return_value = FakeResponse(payload={'value': 1.5})
+    assert robot_api.battery_soc() is None
 
 
 def test_map_success(robot_api):
-    robot_api.requester.get_request.return_value = FakeResponse(payload={"value": "L1"})
+    robot_api.requester.get_request.return_value = FakeResponse(payload={'value': 'L1'})
 
-    result = robot_api.map("andino_6")
+    result = robot_api.current_map()
 
-    assert result == "L1"
-    robot_api.requester.get_request.assert_called_once_with(endpoint="robots/6/attributes/map")
+    assert result == 'L1'
+    robot_api.requester.get_request.assert_called_once_with(
+        endpoint='robots/robot_id/attributes/map'
+    )
 
 
 def test_map_missing_value(robot_api):
     robot_api.requester.get_request.return_value = FakeResponse(payload={})
-    assert robot_api.map("andino_6") is None
+    assert robot_api.current_map() is None
 
 
 def test_get_data_success(robot_api):
-    robot_api.map = Mock(return_value="L1")
+    robot_api.map = Mock(return_value='L1')
     robot_api.position = Mock(return_value=[1.0, 2.0, 3.0])
     robot_api.battery_soc = Mock(return_value=EXPECTED_SOC_ALT)
 
-    result = robot_api.get_data("andino_8")
+    result = robot_api.get_data('andino_8')
 
     assert isinstance(result, RobotUpdateData)
-    assert result.robot_name == "andino_8"
-    assert result.map == "L1"
+    assert result.robot_name == 'andino_8'
+    assert result.map == 'L1'
     assert result.position == [1.0, 2.0, 3.0]
     assert result.battery_soc == EXPECTED_SOC_ALT
     assert result.requires_replan is None
@@ -299,20 +301,20 @@ def test_get_data_returns_none_when_map_missing(robot_api):
     robot_api.position = Mock(return_value=[1.0, 2.0, 3.0])
     robot_api.battery_soc = Mock(return_value=EXPECTED_SOC_ALT)
 
-    assert robot_api.get_data("andino_8") is None
+    assert robot_api.get_data('andino_8') is None
 
 
 def test_robot_update_data_init():
     data = RobotUpdateData(
-        robot_name="andino_10",
-        map="L3",
+        robot_name='andino_10',
+        current_map='L3',
         position=[4.0, 5.0, 6.0],
         battery_soc=EXPECTED_SOC_LOW,
         requires_replan=True,
     )
 
-    assert data.robot_name == "andino_10"
-    assert data.map == "L3"
+    assert data.robot_name == 'andino_10'
+    assert data.map == 'L3'
     assert data.position == [4.0, 5.0, 6.0]
     assert data.battery_soc == EXPECTED_SOC_LOW
     assert data.requires_replan is True

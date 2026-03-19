@@ -1,12 +1,28 @@
 exclude = ["__init__.py"]
 indent-width = 4
-line-length = 120
+# Changed to 99 to match ament_flake8's strict E501 requirement
+line-length = 99
 target-version = "py310"
+
+# Enforce single quotes for the Ruff formatter
+[format]
+quote-style = "single"
 
 [lint]
 # The default expression matches _, __, and _var, but not _var_
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 fixable = ["ALL"]
-ignore = ["D100", "D101", "D102", "D103", "D107", "D203", "D213", "D400", "D401", "D415", "PLR0913", "PLR0915", "RUF012"]
-select = ["E", "W", "F", "I", "B", "D", "RET", "RUF", "PL", "PIE", "FLY"]
+
+# Removed "D400" from ignore list so Ruff prompts you to add periods to docstring summaries
+ignore = ["D100", "D101", "D102", "D103", "D107", "D203", "D401", "D415", "PLR0913", "PLR0915", "RUF012", "E501"]
+
+# Added "Q" (flake8-quotes) and "A" (flake8-builtins)
+select = ["E", "W", "F", "B", "D", "RET", "RUF", "PL", "PIE", "FLY", "Q", "A"]
 unfixable = []
+
+# Enforce single quotes for the Ruff linter
+[lint.flake8-quotes]
+inline-quotes = "single"
+
+[lint.pydocstyle]
+convention = "pep257"
