@@ -30,27 +30,23 @@ class RobotAPI:
     # The constructor below accepts parameters typically required to submit
     # http requests. Users should modify the constructor as per the
     # requirements of their robot's API
-    def __init__(self, prefix: str, timeout: float, api_key: str, battery_attribute_id: str, map_attribute_id: str):
+    def __init__(
+        self, prefix: str, timeout: float, api_key: str, robot_id: str, battery_attribute_id: str, map_attribute_id: str
+    ):
         self.prefix = prefix
         self.timeout = timeout
-        self.logger = RcutilsLogger(f"RobotAPI ({prefix})")
+        self.logger = RcutilsLogger(f"RobotAPI ({robot_id})")
         self.headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
             "x-auth-inorbit-app-key": api_key,
         }
+        self.robot_id = robot_id
         self.battery_attribute_id = battery_attribute_id
         self.map_attribute_id = map_attribute_id
         self.requester = Requester(base_url=self.prefix, headers=self.headers, timeout=self.timeout, logger=self.logger)
         self.last_activity_id = None
         self.current_action = None
-
-    def get_robot_id(self, robot_name: str) -> str:
-        """Extracts the last part of a robot name split by underscore.
-
-        Example: 'andino_123' -> '123'
-        """
-        return robot_name.split("_")[-1]
 
     def check_connection(self):
         """Return True if connection to the robot API server is successful"""
@@ -60,16 +56,15 @@ class RobotAPI:
             return False
         return True
 
-    def is_command_completed(self, robot_name: str):
+    def is_command_completed(self):
         """Return True if the robot has completed its last command, else
 
         return False.
         """
-        robot_name = self.get_robot_id(robot_name)
         if self.last_activity_id is None:
-            self.logger.info(f"No last activity recorded for robot '{robot_name}'")
+            self.logger.info(f"No last activity recorded for robot '{self.robot_id}'")
             return True
-        response = self.requester.get_request(endpoint=f"robots/{robot_name}/actions/{self.last_activity_id}")
+        response = self.requester.get_request(endpoint=f"robots/{self.robot_id}/actions/{self.last_activity_id}")
 
         if response is None:
             self.logger.error("No response received from robot API server")
@@ -77,14 +72,13 @@ class RobotAPI:
 
         response_json = response.json()
         if response_json.get("status", None) == "finished":
-            self.logger.info(f"Activity '{self.last_activity_id}' for robot '{robot_name}' has completed")
+            self.logger.info(f"Activity '{self.last_activity_id}' for robot '{self.robot_id}' has completed")
             self.last_activity_id = None
             return True
         return False
 
     def navigate(
         self,
-        robot_name: str,
         pose,
         map_name: str,
         speed_limit=0.0,
@@ -95,9 +89,8 @@ class RobotAPI:
         This function should return True if the robot has accepted the request,
         else False.
         """
-        robot_name = self.get_robot_id(robot_name)
         self.logger.info(
-            f"Received navigation request for {robot_name} to pose "
+            f"Received navigation request for {self.robot_id} to pose "
             f"{pose} on map {map_name} with speed limit {speed_limit}"
         )
 
@@ -111,7 +104,9 @@ class RobotAPI:
                 }
             ]
         }
-        response = self.requester.post_request(endpoint=f"robots/{robot_name}/navigation/waypoints", json=request_body)
+        response = self.requester.post_request(
+            endpoint=f"robots/{self.robot_id}/navigation/waypoints", json=request_body
+        )
         if response is None:
             self.logger.error("No response received from robot API server")
             return False
@@ -119,7 +114,6 @@ class RobotAPI:
 
     def localize(
         self,
-        robot_name: str,
         pose,
         map_name: str,
     ):
@@ -133,61 +127,58 @@ class RobotAPI:
         # it a delta pose. This is because the robot's API only supports
         # relative localization. If the robot's API supports directly setting
         # the robot's pose, we can modify this function to use that instead.
-        robot_name = self.get_robot_id(robot_name)
         action_body = {
             "actionId": "Relocalize-000000",
             "parameters": {"deltaPose": {"x": -pose[0], "y": -pose[1], "theta": -pose[2], "frameId": map_name}},
         }
-        response = self.requester.post_request(endpoint=f"robots/{robot_name}/actions", json=action_body)
+        response = self.requester.post_request(endpoint=f"robots/{self.robot_id}/actions", json=action_body)
         if response is None:
             self.logger.error("No response received from robot API server")
             return False
         return response.status_code == self.requester.HTTP_OK
 
-    def start_activity(self, robot_name: str, activity: str, label: str, activity_args: dict | None = None):
+    def start_activity(self, activity: str, label: str, activity_args: dict | None = None):
         """Request the robot to begin a process.
 
         This is specific to the robot and the use case.
         For example, load/unload a cart for Deliverybot
         or begin cleaning a zone for a cleaning robot.
         """
-        robot_name = self.get_robot_id(robot_name)
         action_body = {"actionId": f"{activity}", "parameters": activity_args}
-        response = self.requester.post_request(endpoint=f"robots/{robot_name}/actions", json=action_body)
+        response = self.requester.post_request(endpoint=f"robots/{self.robot_id}/actions", json=action_body)
         if response is None:
             self.logger.error("No response received from robot API server")
             return False
         response_json = response.json()
-        self.logger.info(f"Activity started for robot {robot_name}: {activity} with response: {response_json}")
+        self.logger.info(f"Activity started for robot {self.robot_id}: {activity} with response: {response_json}")
         self.last_activity_id = response_json.get("executionId", None)
         if response.status_code == self.requester.HTTP_OK:
             self.current_action = self.last_activity_id
             return True
         return False
 
-    def stop(self, robot_name: str):
+    def stop(self):
         """Command the robot to stop.
 
         Return True if robot has successfully stopped. Else False.
         """
         if self.last_activity_id is None:
-            self.logger.error(f"No last activity recorded for robot '{robot_name}'. Cannot stop.")
+            self.logger.error(f"No last activity recorded for robot '{self.robot_id}'. Cannot stop.")
             return True
-        robot_name = self.get_robot_id(robot_name)
         action_body = {"actionId": self.last_activity_id, "parameters": {}}
-        response = self.requester.post_request(endpoint=f"robots/{robot_name}/actions", json=action_body)
+        response = self.requester.post_request(endpoint=f"robots/{self.robot_id}/actions", json=action_body)
         if response is None:
             self.logger.error("No response received from robot API server")
             return False
         self.last_activity_id = None
         return response.status_code == self.requester.HTTP_OK
 
-    def position(self, robot_name: str):
-        robot_name = self.get_robot_id(robot_name)
-        """ Return [x, y, theta] expressed in the robot's coordinate frame or
-        None if any errors are encountered """
+    def position(self):
+        """Return [x, y, theta] expressed in the robot's coordinate frame or
 
-        response = self.requester.get_request(endpoint=f"robots/{robot_name}/localization/pose")
+        None if any errors are encountered
+        """
+        response = self.requester.get_request(endpoint=f"robots/{self.robot_id}/localization/pose")
         if response is None:
             self.logger.error("No response received from robot API server")
             return None
@@ -199,14 +190,13 @@ class RobotAPI:
             return None
         return [float(response_json["x"]), float(response_json["y"]), float(response_json["theta"])]
 
-    def battery_soc(self, robot_name: str):
+    def battery_soc(self):
         """Return the state of charge of the robot as a value between 0.0
 
         and 1.0. Else return None if any errors are encountered.
         """
-        robot_name = self.get_robot_id(robot_name)
         attribute_id = self.battery_attribute_id
-        response = self.requester.get_request(endpoint=f"robots/{robot_name}/attributes/{attribute_id}")
+        response = self.requester.get_request(endpoint=f"robots/{self.robot_id}/attributes/{attribute_id}")
         if response is None:
             self.logger.error("No response received from robot API server")
             return None
@@ -224,13 +214,12 @@ class RobotAPI:
             return None
         return float(response_json["value"])
 
-    def map(self, robot_name: str):
+    def map(self):
         """Return the name of the map that the robot is currently on or
 
         None if any errors are encountered.
         """
-        robot_name = self.get_robot_id(robot_name)
-        response = self.requester.get_request(endpoint=f"robots/{robot_name}/attributes/{self.map_attribute_id}")
+        response = self.requester.get_request(endpoint=f"robots/{self.robot_id}/attributes/{self.map_attribute_id}")
         if response is None:
             self.logger.error("No response received from robot API server")
             return None
@@ -247,9 +236,9 @@ class RobotAPI:
 
         Otherwise return a list of RobotUpdateData for all robots.
         """
-        map = self.map(robot_name)
-        position = self.position(robot_name)
-        battery_soc = self.battery_soc(robot_name)
+        map = self.map()
+        position = self.position()
+        battery_soc = self.battery_soc()
         if not (map is None or position is None or battery_soc is None):
             return RobotUpdateData(robot_name, map, position, battery_soc)
         return None

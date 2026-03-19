@@ -126,20 +126,26 @@ def main(argv=sys.argv):
     fleet_handle.more().set_planner_cache_reset_size(2500)
 
     # Initialize robot API for this fleet
-    fleet_mgr_yaml = config_yaml["fleet_manager"]
-    update_period = 1.0 / fleet_mgr_yaml.get("robot_state_update_frequency", 10.0)
-    api = RobotAPI(
-        prefix=fleet_mgr_yaml["prefix"],
-        timeout=fleet_mgr_yaml["timeout"],
-        api_key=fleet_mgr_yaml["api_key"],
-        battery_attribute_id=fleet_mgr_yaml["battery_attribute_id"],
-        map_attribute_id=fleet_mgr_yaml["map_attribute_id"],
-    )
-
+    fleet_manager_yaml = config_yaml["fleet_manager"]
+    update_period = 1.0 / fleet_manager_yaml.get("robot_state_update_frequency", 10.0)
     robots = {}
     for robot_name in fleet_config.known_robots:
+        try:
+            robot_config = config_yaml["rmf_fleet"]["robots"][robot_name]["robot_config"]
+        except KeyError:
+            node.get_logger().error(f"No robot_config found for robot [{robot_name}] in config file")
+            continue
+
+        robot_api = RobotAPI(
+            prefix=fleet_manager_yaml["prefix"],
+            timeout=fleet_manager_yaml["timeout"],
+            api_key=fleet_manager_yaml["api_key"],
+            robot_id=robot_config["robot_id"],
+            battery_attribute_id=robot_config["battery_attribute_id"],
+            map_attribute_id=robot_config["map_attribute_id"],
+        )
         robot_config = fleet_config.get_known_robot_configuration(robot_name)
-        robots[robot_name] = RobotAdapter(robot_name, robot_config, node, api, fleet_handle)
+        robots[robot_name] = RobotAdapter(robot_name, robot_config, node, robot_api, fleet_handle)
 
     def update_loop():
         reassign_task_interval = config_yaml["rmf_fleet"].get("reassign_task_interval", 60)  # seconds
@@ -195,18 +201,22 @@ class RobotAdapter:
         self.target_position = None
         self.LOCALIZATION_TOLERANCE = 0.3
 
+    def is_navigation_within_tolerance(self, state):
+        if self.target_position is None:
+            return False
+        dx = state.position[0] - self.target_position[0]
+        dy = state.position[1] - self.target_position[1]
+        dist = math.sqrt(dx**2 + dy**2)
+        return dist < self.LOCALIZATION_TOLERANCE
+
     def update(self, state, robot_name):
         activity_identifier = None
         if self.execution:
             is_finished = False
-            if self.target_position is not None:
-                dx = state.position[0] - self.target_position[0]
-                dy = state.position[1] - self.target_position[1]
-                dist = math.sqrt(dx**2 + dy**2)
-                if dist < self.LOCALIZATION_TOLERANCE:
-                    is_finished = True
-                    self.target_position = None
-            elif self.api.current_action is not None and self.api.is_command_completed(robot_name):
+            if self.target_position is not None and self.is_navigation_within_tolerance(state):
+                is_finished = True
+                self.target_position = None
+            elif self.api.current_action is not None and self.api.is_command_completed():
                 is_finished = True
 
             if is_finished:
@@ -229,7 +239,7 @@ class RobotAdapter:
 
     def localize(self, estimate, execution):
         self.node.get_logger().info(f"Commanding [{self.name}] to change map to" f" [{estimate.map}]")
-        if self.api.localize(self.name, estimate.position, estimate.map):
+        if self.api.localize(estimate.position, estimate.map):
             self.node.get_logger().info(
                 f"Localized [{self.name}] on {estimate.map} " f"at position [{estimate.position}]"
             )
@@ -248,13 +258,13 @@ class RobotAdapter:
         self.node.get_logger().info(
             f"Commanding [{self.name}] to navigate to {destination.position} " f"on map [{destination.map}]"
         )
-        self.api.navigate(self.name, destination.position, destination.map, destination.speed_limit)
+        self.api.navigate(destination.position, destination.map, destination.speed_limit)
 
     def stop(self, activity):
         if self.execution is not None:
             if self.execution.identifier.is_same(activity):
                 self.execution = None
-                self.api.stop(self.name)
+                self.api.stop()
 
     def execute_action(self, category: str, description: dict, execution):
         self.execution = execution
@@ -268,7 +278,6 @@ class RobotAdapter:
                     f"Executing 'inorbit' action for robot '{self.name}' with description: {description}"
                 )
                 self.api.start_activity(
-                    robot_name=self.name,
                     activity=description.get("action_id", None),
                     label="Custom",
                     activity_args=description.get("action_args", None),
