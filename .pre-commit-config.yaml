@@ -20,3 +20,19 @@ repos:
       - id: ruff
         args: ["--fix", "--unsafe-fixes", "--config", "ruff.toml"]
       - id: ruff-format
+
+  # ROS 2 Ament Linters
+  - repo: local
+    hooks:
+      - id: ament_flake8
+        name: ament_flake8
+        description: Check Python code style using ament_flake8
+        entry: ament_flake8
+        language: system
+        types: [python]
+      - id: ament_pep257
+        name: ament_pep257
+        description: Check Python docstring style using ament_pep257
+        entry: ament_pep257
+        language: system
+        types: [python]

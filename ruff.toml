@@ -14,11 +14,18 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 fixable = ["ALL"]
 
 # Removed "D400" from ignore list so Ruff prompts you to add periods to docstring summaries
-ignore = ["D100", "D101", "D102", "D103", "D107", "D203", "D401", "D415", "PLR0913", "PLR0915", "RUF012", "E501"]
+ignore = ["D100", "D101", "D102", "D103", "D107", "D203", "D401", "D415", "PLR0913", "PLR0915", "RUF012"]
 
 # Added "Q" (flake8-quotes) and "A" (flake8-builtins)
-select = ["E", "W", "F", "B", "D", "RET", "RUF", "PL", "PIE", "FLY", "Q", "A"]
+select = ["E", "W", "F", "I", "B", "D", "RET", "RUF", "PL", "PIE", "FLY", "Q", "A"]
 unfixable = []
+
+[lint.isort]
+force-sort-within-sections = true
+order-by-type = false
+# Force Ruff to group your local package with third-party packages (like pytest)
+# so they are sorted as a single alphabetical block, which ament_flake8 requires.
+known-third-party = ["oro_fleet_adapter"]
 
 # Enforce single quotes for the Ruff linter
 [lint.flake8-quotes]

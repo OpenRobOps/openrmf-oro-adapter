@@ -16,10 +16,8 @@
 
 from unittest.mock import Mock
 
-import pytest
-
-# Adjust this import to your real package/module path
 from oro_fleet_adapter.RobotClientAPI import RobotAPI, RobotUpdateData
+import pytest
 
 EXPECTED_SOC = 0.85
 EXPECTED_SOC_ALT = 0.9
@@ -282,7 +280,7 @@ def test_map_missing_value(robot_api):
 
 
 def test_get_data_success(robot_api):
-    robot_api.map = Mock(return_value='L1')
+    robot_api.current_map = Mock(return_value='L1')
     robot_api.position = Mock(return_value=[1.0, 2.0, 3.0])
     robot_api.battery_soc = Mock(return_value=EXPECTED_SOC_ALT)
 
@@ -290,14 +288,14 @@ def test_get_data_success(robot_api):
 
     assert isinstance(result, RobotUpdateData)
     assert result.robot_name == 'andino_8'
-    assert result.map == 'L1'
+    assert result.current_map == 'L1'
     assert result.position == [1.0, 2.0, 3.0]
     assert result.battery_soc == EXPECTED_SOC_ALT
     assert result.requires_replan is None
 
 
 def test_get_data_returns_none_when_map_missing(robot_api):
-    robot_api.map = Mock(return_value=None)
+    robot_api.current_map = Mock(return_value=None)
     robot_api.position = Mock(return_value=[1.0, 2.0, 3.0])
     robot_api.battery_soc = Mock(return_value=EXPECTED_SOC_ALT)
 
@@ -314,7 +312,7 @@ def test_robot_update_data_init():
     )
 
     assert data.robot_name == 'andino_10'
-    assert data.map == 'L3'
+    assert data.current_map == 'L3'
     assert data.position == [4.0, 5.0, 6.0]
     assert data.battery_soc == EXPECTED_SOC_LOW
     assert data.requires_replan is True

@@ -137,7 +137,9 @@ class RobotAPI:
         """
         Request the robot to localize on a target map.
 
-        Request the robot to localize on target map. This function should return True if the robot has accepted the request, else False.
+        Request the robot to localize on target map.
+        This function should return True if the robot has accepted the request,
+        else False.
         """
         # TODO: currently the localization uses a delta pose to update the
         # robot's position.We just change the sign of the input pose to make
@@ -210,7 +212,8 @@ class RobotAPI:
         """
         Get the robot's current position as [x, y, theta].
 
-        Return [x, y, theta] expressed in the robot's coordinate frame or None if any errors are encountered.
+        Return [x, y, theta] expressed in the robot's coordinate frame or
+        None if any errors are encountered.
         """
         response = self.requester.get_request(endpoint=f'robots/{self.robot_id}/localization/pose')
         if response is None:
@@ -232,7 +235,8 @@ class RobotAPI:
         """
         Get the robot's state of charge (battery SoC).
 
-        Return the state of charge of the robot as a value between 0.0 and 1.0. Else return None if any errors are encountered.
+        Return the state of charge of the robot as a value between 0.0 and 1.0.
+        Else return None if any errors are encountered.
         """
         attribute_id = self.battery_attribute_id
         response = self.requester.get_request(
@@ -261,7 +265,8 @@ class RobotAPI:
         """
         Get the name of the map the robot is currently on.
 
-        Return the name of the map that the robot is currently on or None if any errors are encountered.
+        Return the name of the map that the robot is currently on or
+        None if any errors are encountered.
         """
         response = self.requester.get_request(
             endpoint=f'robots/{self.robot_id}/attributes/{self.map_attribute_id}'
@@ -281,7 +286,8 @@ class RobotAPI:
         """
         Get update data for a robot or all robots.
 
-        Return a RobotUpdateData for one robot if a name is given. Otherwise return a list of RobotUpdateData for all robots.
+        Return a RobotUpdateData for one robot if a name is given.
+        Otherwise return a list of RobotUpdateData for all robots.
         """
         current_map = self.current_map()
         position = self.position()

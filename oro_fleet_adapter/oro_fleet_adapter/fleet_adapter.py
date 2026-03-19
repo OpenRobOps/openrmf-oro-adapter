@@ -22,13 +22,13 @@ import time
 
 import nudged
 import rclpy
+from rclpy.duration import Duration
 import rclpy.node
+from rclpy.parameter import Parameter
 import rmf_adapter
+from rmf_adapter import Adapter, Transformation
 import rmf_adapter.easy_full_control as rmf_easy
 import yaml
-from rclpy.duration import Duration
-from rclpy.parameter import Parameter
-from rmf_adapter import Adapter, Transformation
 
 from .RobotClientAPI import RobotAPI
 

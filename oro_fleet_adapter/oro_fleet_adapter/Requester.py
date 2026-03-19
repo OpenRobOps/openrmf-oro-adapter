@@ -1,5 +1,5 @@
-import requests
 from rclpy.impl.rcutils_logger import RcutilsLogger
+import requests
 from requests import Response
 
 
