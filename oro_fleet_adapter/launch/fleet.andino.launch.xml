@@ -8,6 +8,7 @@
   <arg name="use_sim_time" default="false"/>
   <arg name="map_name" default="L1"/>
   <arg name="server_uri" default="ws://localhost:8000/_internal"/>
+  <arg name="fleet_adapter_config_file" default="$(find-pkg-share oro_fleet_adapter)/demo.andino.config.yaml"/>
 
   <!-- Common launch -->
   <node pkg="rmf_traffic_ros2"
@@ -61,7 +62,7 @@
   <group if="$(var use_sim_time)">
     <node pkg="oro_fleet_adapter"
           exec="fleet_adapter"
-          args="-c $(find-pkg-share oro_fleet_adapter)/demo.andino.config.yaml -n $(var nav_graph_path) -sim"
+          args="-c $(var fleet_adapter_config_file) -n $(var nav_graph_path) -sim"
           output="both">
       <param name="use_sim_time" value="$(var use_sim_time)"/>
       <param name="server_uri" value="$(var server_uri)"/>
@@ -71,7 +72,7 @@
   <group unless="$(var use_sim_time)">
     <node pkg="oro_fleet_adapter"
           exec="fleet_adapter"
-          args="-c $(find-pkg-share oro_fleet_adapter)/demo.andino.config.yaml -n $(var nav_graph_path)"
+          args="-c $(var fleet_adapter_config_file) -n $(var nav_graph_path)"
           output="both">
       <param name="use_sim_time" value="$(var use_sim_time)"/>
       <param name="server_uri" value="$(var server_uri)"/>
