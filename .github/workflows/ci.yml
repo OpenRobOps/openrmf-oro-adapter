@@ -1,0 +1,42 @@
+name: colcon build & test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+# Cancel previously running PR jobs
+concurrency:
+  group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  compile_and_test:
+    name: Compile and test (${{ matrix.ros_distro }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # - ros_distro: humble
+          #   os_version: ubuntu:22.04
+          - ros_distro: jazzy
+            os_version: ubuntu:24.04
+    container:
+      image: ${{ matrix.os_version }}
+    steps:
+    - name: Install Node.js (act workaround)
+      if: ${{ env.ACT }}
+      run: apt-get update && apt-get install -y nodejs
+    - uses: actions/checkout@v3
+    - uses: ros-tooling/setup-ros@v0.7
+    - uses: ros-tooling/action-ros-ci@v0.3
+      id: action_ros_ci_step
+      with:
+        package-name: oro_fleet_adapter
+        target-ros2-distro: ${{ matrix.ros_distro }}
+        import-token: ${{ secrets.GITHUB_TOKEN }}
