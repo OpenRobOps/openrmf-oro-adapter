@@ -5,7 +5,7 @@
   <arg name="building_map_path"/>
   <arg name="nav_graph_path"/>
   <arg name="viz_config_file"/>
-  <arg name="use_sim_time" default="true"/>
+  <arg name="use_sim_time" default="false"/>
   <arg name="map_name" default="L1"/>
   <arg name="server_uri" default="ws://localhost:8000/_internal"/>
 

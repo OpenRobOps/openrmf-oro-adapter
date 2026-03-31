@@ -151,6 +151,8 @@ def main(argv=sys.argv):
         robot_config = fleet_config.get_known_robot_configuration(robot_name)
         robots[robot_name] = RobotAdapter(robot_name, robot_config, node, robot_api, fleet_handle)
 
+    node.get_logger().info(f'Initialized APIs for robots: {list(robots.keys())}')
+
     def update_loop():
         reassign_task_interval = config_yaml['rmf_fleet'].get(
             'reassign_task_interval', 60
@@ -165,7 +167,12 @@ def main(argv=sys.argv):
             for robot in robots.values():
                 update_jobs.append(update_robot(robot))
 
-            asyncio.get_event_loop().run_until_complete(asyncio.wait(update_jobs))
+            done, pending = asyncio.get_event_loop().run_until_complete(asyncio.wait(update_jobs))
+
+            for task in done:
+                exc = task.exception()
+                if exc is not None:
+                    node.get_logger().error(f'Update task failed: {exc}')
 
             interval_sec = (now.nanoseconds - last_task_replan.nanoseconds) / 1e9
             if interval_sec > reassign_task_interval:
@@ -315,19 +322,25 @@ def parallel(f):
 
 @parallel
 def update_robot(robot: RobotAdapter):
-    data = robot.api.get_data(robot.name)
-    if data is None:
-        return
+    try:
+        data = robot.api.get_data(robot.name)
 
-    state = rmf_easy.RobotState(data.map, data.position, data.battery_soc)
+        if data is None:
+            robot.node.get_logger().warn(f'No data received for robot [{robot.name}]')
+            return
 
-    if robot.update_handle is None:
-        robot.update_handle = robot.fleet_handle.add_robot(
-            robot.name, state, robot.configuration, robot.make_callbacks()
-        )
-        return
+        state = rmf_easy.RobotState(data.current_map, data.position, data.battery_soc)
 
-    robot.update(state, robot.name)
+        if robot.update_handle is None:
+            robot.update_handle = robot.fleet_handle.add_robot(
+                robot.name, state, robot.configuration, robot.make_callbacks()
+            )
+            return
+
+        robot.update(state, robot.name)
+
+    except Exception as e:
+        robot.node.get_logger().error(f'Failed updating robot [{robot.name}]: {e}')
 
 
 if __name__ == '__main__':

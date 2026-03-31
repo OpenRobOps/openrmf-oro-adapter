@@ -46,7 +46,8 @@ rmf_fleet:
           waypoint: "spawn_robot1"
 
 fleet_manager:
-  prefix: "https://api.inorbit.ai/"
+  # prefix: "https://api.inorbit.ai/"
+  prefix: "http://localhost:3000/api/"
   timeout: 5.0
   api_key: "6_n2kuw8gi88XUJ6"
 

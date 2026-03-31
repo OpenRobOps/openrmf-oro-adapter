@@ -38,7 +38,7 @@ class FakeResponse:
 @pytest.fixture
 def robot_api():
     api = RobotAPI(
-        prefix='http://localhost:3001',
+        prefix='http://localhost:3010',
         timeout=5.0,
         api_key='test-api-key',
         robot_id='robot_id',
