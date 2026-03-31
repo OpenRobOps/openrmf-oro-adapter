@@ -19,20 +19,19 @@ import math
 import sys
 import threading
 import time
-import nudged
-import yaml
 
+import nudged
 import rclpy
 from rclpy.duration import Duration
 import rclpy.node
 from rclpy.parameter import Parameter
 import rmf_adapter
-from rmf_adapter import Adapter
+from rmf_adapter import Adapter, Transformation
 import rmf_adapter.easy_full_control as rmf_easy
-from rmf_adapter import Transformation
+import yaml
 
 from .RobotClientAPI import RobotAPI
-from .RobotClientAPI import RobotUpdateData
+
 
 # ------------------------------------------------------------------------------
 # Helper functions
@@ -44,15 +43,10 @@ def compute_transforms(level, coords, node=None):
     tf = nudged.estimate(rmf_coords, robot_coords)
     if node:
         mse = nudged.estimate_error(tf, rmf_coords, robot_coords)
-        node.get_logger().info(
-            f"Transformation error estimate for {level}: {mse}"
-        )
+        node.get_logger().info(f'Transformation error estimate for {level}: {mse}')
 
-    return Transformation(
-        tf.get_rotation(),
-        tf.get_scale(),
-        tf.get_translation()
-    )
+    return Transformation(tf.get_rotation(), tf.get_scale(), tf.get_translation())
+
 
 # ------------------------------------------------------------------------------
 # Main
@@ -94,9 +88,7 @@ def main(argv=sys.argv):
     config_path = args.config_file
     nav_graph_path = args.nav_graph
 
-    fleet_config = rmf_easy.FleetConfiguration.from_config_files(
-        config_path, nav_graph_path
-    )
+    fleet_config = rmf_easy.FleetConfiguration.from_config_files(config_path, nav_graph_path)
     assert fleet_config, f'Failed to parse config file [{config_path}]'
 
     # Parse the yaml in Python to get the fleet_manager info
@@ -108,8 +100,7 @@ def main(argv=sys.argv):
     node = rclpy.node.Node(f'{fleet_name}_command_handle')
     adapter = Adapter.make(f'{fleet_name}_fleet_adapter')
     assert adapter, (
-        'Unable to initialize fleet adapter. '
-        'Please ensure RMF Schedule Node is running'
+        'Unable to initialize fleet adapter. ' 'Please ensure RMF Schedule Node is running'
     )
 
     # Enable sim time for testing offline
@@ -122,46 +113,50 @@ def main(argv=sys.argv):
     time.sleep(1.0)
 
     node.declare_parameter('server_uri', '')
-    server_uri = (
-        node.get_parameter('server_uri').get_parameter_value().string_value
-    )
+    server_uri = node.get_parameter('server_uri').get_parameter_value().string_value
     if server_uri == '':
         server_uri = None
 
     fleet_config.server_uri = server_uri
-    
+
     # Configure the transforms between robot and RMF frames
     for level, coords in config_yaml['reference_coordinates'].items():
         tf = compute_transforms(level, coords, node)
         fleet_config.add_robot_coordinates_transformation(level, tf)
-    
+
     fleet_handle = adapter.add_easy_fleet(fleet_config)
     fleet_handle.more().set_planner_cache_reset_size(2500)
 
     # Initialize robot API for this fleet
-    fleet_mgr_yaml = config_yaml['fleet_manager']
-    update_period = 1.0 / fleet_mgr_yaml.get(
-        'robot_state_update_frequency', 10.0
-    )
-    api = RobotAPI(
-        node=node,
-        prefix= fleet_mgr_yaml['prefix'],
-        timeout=fleet_mgr_yaml['timeout'],
-        api_key=fleet_mgr_yaml['api_key'],
-        battery_attribute_id=fleet_mgr_yaml['battery_attribute_id'],
-        map_attribute_id=fleet_mgr_yaml['map_attribute_id']
-    )
-
+    fleet_manager_yaml = config_yaml['fleet_manager']
+    update_period = 1.0 / fleet_manager_yaml.get('robot_state_update_frequency', 10.0)
     robots = {}
     for robot_name in fleet_config.known_robots:
-        robot_config = fleet_config.get_known_robot_configuration(robot_name)
-        robots[robot_name] = RobotAdapter(
-            robot_name, robot_config, node, api, fleet_handle
+        try:
+            robot_config = config_yaml['rmf_fleet']['robots'][robot_name]['robot_config']
+        except KeyError:
+            node.get_logger().error(
+                f'No robot_config found for robot [{robot_name}] in config file'
+            )
+            continue
+
+        robot_api = RobotAPI(
+            prefix=fleet_manager_yaml['prefix'],
+            timeout=fleet_manager_yaml['timeout'],
+            api_key=fleet_manager_yaml['api_key'],
+            robot_id=robot_config['robot_id'],
+            battery_attribute_id=robot_config['battery_attribute_id'],
+            map_attribute_id=robot_config['map_attribute_id'],
         )
+        robot_config = fleet_config.get_known_robot_configuration(robot_name)
+        robots[robot_name] = RobotAdapter(robot_name, robot_config, node, robot_api, fleet_handle)
+
+    node.get_logger().info(f'Initialized APIs for robots: {list(robots.keys())}')
 
     def update_loop():
         reassign_task_interval = config_yaml['rmf_fleet'].get(
-            'reassign_task_interval', 60)  # seconds
+            'reassign_task_interval', 60
+        )  # seconds
         last_task_replan = node.get_clock().now()
         asyncio.set_event_loop(asyncio.new_event_loop())
         while rclpy.ok():
@@ -172,12 +167,14 @@ def main(argv=sys.argv):
             for robot in robots.values():
                 update_jobs.append(update_robot(robot))
 
-            asyncio.get_event_loop().run_until_complete(
-                asyncio.wait(update_jobs)
-            )
+            done, pending = asyncio.get_event_loop().run_until_complete(asyncio.wait(update_jobs))
 
-            interval_sec = (now.nanoseconds -
-                            last_task_replan.nanoseconds) / 1e9
+            for task in done:
+                exc = task.exception()
+                if exc is not None:
+                    node.get_logger().error(f'Update task failed: {exc}')
+
+            interval_sec = (now.nanoseconds - last_task_replan.nanoseconds) / 1e9
             if interval_sec > reassign_task_interval:
                 fleet_handle.more().reassign_dispatched_tasks()
                 last_task_replan = now
@@ -203,9 +200,7 @@ def main(argv=sys.argv):
 
 
 class RobotAdapter:
-    def __init__(
-        self, name: str, configuration, node, api: RobotAPI, fleet_handle
-    ):
+    def __init__(self, name: str, configuration, node, api: RobotAPI, fleet_handle):
         self.name = name
         self.execution = None
         self.update_handle = None
@@ -217,22 +212,25 @@ class RobotAdapter:
         self.issue_cmd_thread = None
         self.cancel_cmd_event = threading.Event()
         self.target_position = None
-        self.current_action = None
+        self.LOCALIZATION_TOLERANCE = 0.3
+
+    def is_navigation_within_tolerance(self, state):
+        if self.target_position is None:
+            return False
+        dx = state.position[0] - self.target_position[0]
+        dy = state.position[1] - self.target_position[1]
+        dist = math.sqrt(dx**2 + dy**2)
+        return dist < self.LOCALIZATION_TOLERANCE
 
     def update(self, state, robot_name):
         activity_identifier = None
         if self.execution:
             is_finished = False
-            if self.target_position is not None:
-                dx = state.position[0] - self.target_position[0]
-                dy = state.position[1] - self.target_position[1]
-                dist = math.sqrt(dx**2 + dy**2)
-                if dist < 0.3: 
-                    is_finished = True
-                    self.target_position = None
-            else:
-                if self.current_action is not None and self.api.is_command_completed(robot_name):
-                    is_finished = True
+            if self.target_position is not None and self.is_navigation_within_tolerance(state):
+                is_finished = True
+                self.target_position = None
+            elif self.api.current_action is not None and self.api.is_command_completed():
+                is_finished = True
 
             if is_finished:
                 self.execution.finished()
@@ -243,31 +241,24 @@ class RobotAdapter:
 
     def make_callbacks(self):
         callbacks = rmf_easy.RobotCallbacks(
-            lambda destination, execution: self.navigate(
-                destination, execution
-            ),
+            lambda destination, execution: self.navigate(destination, execution),
             lambda activity: self.stop(activity),
             lambda category, description, execution: self.execute_action(
                 category, description, execution
-            )
+            ),
         )
 
-        callbacks.localize = lambda estimate, execution: self.localize(
-            estimate, execution
-        )
+        callbacks.localize = lambda estimate, execution: self.localize(estimate, execution)
 
         return callbacks
 
-    
     def localize(self, estimate, execution):
         self.node.get_logger().info(
-            f'Commanding [{self.name}] to change map to'
-            f' [{estimate.map}]'
+            f'Commanding [{self.name}] to change map to' f' [{estimate.map}]'
         )
-        if self.api.localize(self.name, estimate.position, estimate.map):
+        if self.api.localize(estimate.position, estimate.map):
             self.node.get_logger().info(
-                f'Localized [{self.name}] on {estimate.map} '
-                f'at position [{estimate.position}]'
+                f'Localized [{self.name}] on {estimate.map} ' f'at position [{estimate.position}]'
             )
             execution.finished()
         else:
@@ -285,19 +276,13 @@ class RobotAdapter:
             f'Commanding [{self.name}] to navigate to {destination.position} '
             f'on map [{destination.map}]'
         )
-        self.api.navigate(
-            self.name,
-            destination.position,
-            destination.map,
-            destination.speed_limit
-        )
+        self.api.navigate(destination.position, destination.map, destination.speed_limit)
 
     def stop(self, activity):
         if self.execution is not None:
             if self.execution.identifier.is_same(activity):
                 self.execution = None
-                self.api.stop(self.name)
-                
+                self.api.stop()
 
     def execute_action(self, category: str, description: dict, execution):
         self.execution = execution
@@ -307,15 +292,15 @@ class RobotAdapter:
         # )
         match category:
             case 'inorbit':
-                self.node.get_logger().info(f"Executing 'inorbit' action for robot '{self.name}' with description: {description}")
-                accepted = self.api.start_activity(
-                    robot_name=self.name,
-                    activity=description.get('action_id', None), 
-                    label='Custom',
-                    activity_args=description.get('action_args', None)
+                self.node.get_logger().info(
+                    f"Executing 'inorbit' action for robot '{self.name}' "
+                    f'with description: {description}'
                 )
-                if accepted:
-                    self.current_action = description.get('action_id', None)
+                self.api.start_activity(
+                    activity=description.get('action_id', None),
+                    label='Custom',
+                    activity_args=description.get('action_args', None),
+                )
 
     def finish_action(self):
         # This is triggered by a ModeRequest callback which allows human
@@ -325,35 +310,37 @@ class RobotAdapter:
             self.execution.finished()
             self.execution = None
 
+
 # Parallel processing solution derived from
 # https://stackoverflow.com/a/59385935
 def parallel(f):
     def run_in_parallel(*args, **kwargs):
-        return asyncio.get_event_loop().run_in_executor(
-            None, f, *args, **kwargs
-        )
+        return asyncio.get_event_loop().run_in_executor(None, f, *args, **kwargs)
 
     return run_in_parallel
 
 
 @parallel
 def update_robot(robot: RobotAdapter):
-    data = robot.api.get_data(robot.name)
-    if data is None:
-        return
+    try:
+        data = robot.api.get_data(robot.name)
 
-    state = rmf_easy.RobotState(data.map, data.position, data.battery_soc)
+        if data is None:
+            robot.node.get_logger().warn(f'No data received for robot [{robot.name}]')
+            return
 
-    if robot.update_handle is None:
-        robot.update_handle = robot.fleet_handle.add_robot(
-            robot.name, 
-            state, 
-            robot.configuration, 
-            robot.make_callbacks()
-        )
-        return
+        state = rmf_easy.RobotState(data.current_map, data.position, data.battery_soc)
 
-    robot.update(state, robot.name)
+        if robot.update_handle is None:
+            robot.update_handle = robot.fleet_handle.add_robot(
+                robot.name, state, robot.configuration, robot.make_callbacks()
+            )
+            return
+
+        robot.update(state, robot.name)
+
+    except Exception as e:
+        robot.node.get_logger().error(f'Failed updating robot [{robot.name}]: {e}')
 
 
 if __name__ == '__main__':
