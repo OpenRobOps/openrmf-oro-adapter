@@ -296,11 +296,18 @@ class RobotAdapter:
                     f"Executing 'inorbit' action for robot '{self.name}' "
                     f'with description: {description}'
                 )
-                self.api.start_activity(
-                    activity=description.get('action_id', None),
-                    label='Custom',
-                    activity_args=description.get('action_args', None),
-                )
+                try:
+                    self.api.start_activity(
+                        activity=description.get('action_id', None),
+                        label=description.get('label', None),
+                        activity_args=description.get('action_args', None),
+                    )
+                except Exception as e:
+                    error_msg = f'Exception during InOrbit start_activity: {e!s}'
+                    self.node.get_logger().error(error_msg)
+                    self.execution.error(error_msg)
+                    self.execution = None
+                    return
 
     def finish_action(self):
         # This is triggered by a ModeRequest callback which allows human

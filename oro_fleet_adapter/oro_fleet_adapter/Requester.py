@@ -40,3 +40,13 @@ class Requester:
         except Exception as e:
             self.logger.error(f'Exception on POST {url}: {e}')
         return None
+
+    def post_request_exception(self, /, *, endpoint: str, json=None) -> Response | None:
+        url = f'{self.base_url}{endpoint}'
+        res = requests.post(url, headers=self.headers, json=json, timeout=self.timeout)
+        if res.status_code != self.HTTP_OK:
+            raise Exception(
+                f'\nStatus code {res.status_code} on POST {url} '
+                f'with body {json}\nmessage: {res.text}'
+            )
+        return res

@@ -170,9 +170,10 @@ class RobotAPI:
         or begin cleaning a zone for a cleaning robot.
         """
         action_body = {'actionId': f'{activity}', 'parameters': activity_args}
-        response = self.requester.post_request(
+        response = self.requester.post_request_exception(
             endpoint=f'robots/{self.robot_id}/actions', json=action_body
         )
+
         if response is None:
             self.logger.error('No response received from robot API server')
             return False
