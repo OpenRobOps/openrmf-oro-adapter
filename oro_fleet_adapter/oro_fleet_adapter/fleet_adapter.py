@@ -148,8 +148,14 @@ def main(argv=sys.argv):
             battery_attribute_id=robot_config['battery_attribute_id'],
             map_attribute_id=robot_config['map_attribute_id'],
         )
-        robot_config = fleet_config.get_known_robot_configuration(robot_name)
-        robots[robot_name] = RobotAdapter(robot_name, robot_config, node, robot_api, fleet_handle)
+        robots[robot_name] = RobotAdapter(
+            name=robot_name,
+            configuration=fleet_config.get_known_robot_configuration(robot_name),
+            node=node,
+            api=robot_api,
+            fleet_handle=fleet_handle,
+            localization_tolerance=robot_config.get('localization_tolerance', 0.3),
+        )
 
     node.get_logger().info(f'Initialized APIs for robots: {list(robots.keys())}')
 
@@ -200,7 +206,15 @@ def main(argv=sys.argv):
 
 
 class RobotAdapter:
-    def __init__(self, name: str, configuration, node, api: RobotAPI, fleet_handle):
+    def __init__(
+        self,
+        name: str,
+        configuration,
+        node,
+        api: RobotAPI,
+        fleet_handle,
+        localization_tolerance=0.3,
+    ):
         self.name = name
         self.execution = None
         self.update_handle = None
@@ -212,7 +226,7 @@ class RobotAdapter:
         self.issue_cmd_thread = None
         self.cancel_cmd_event = threading.Event()
         self.target_position = None
-        self.LOCALIZATION_TOLERANCE = 0.3
+        self.localization_tolerance = localization_tolerance
 
     def is_navigation_within_tolerance(self, state):
         if self.target_position is None:
@@ -220,7 +234,7 @@ class RobotAdapter:
         dx = state.position[0] - self.target_position[0]
         dy = state.position[1] - self.target_position[1]
         dist = math.sqrt(dx**2 + dy**2)
-        return dist < self.LOCALIZATION_TOLERANCE
+        return dist < self.localization_tolerance
 
     def update(self, state, robot_name):
         activity_identifier = None

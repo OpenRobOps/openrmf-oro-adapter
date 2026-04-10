@@ -32,6 +32,7 @@ rmf_fleet:
     andino1:
       robot_config:
         max_delay: 15.0
+        localization_tolerance: 0.3 # m optional parameter to specify how close the robot needs to be to the target position for navigation tasks to be considered successful, default is 0.3m
         # ORO-specific configuration parameters
         robot_id: "620918333"
         battery_attribute_id: "evwkT2VZ9LLP1-bc"
@@ -47,6 +48,7 @@ rmf_fleet:
     andino2:
       robot_config:
         max_delay: 15.0
+        localization_tolerance: 0.3
         # ORO-specific configuration parameters
         robot_id: "620918334"
         battery_attribute_id: "evwkT2VZ9LLP1-bc"
