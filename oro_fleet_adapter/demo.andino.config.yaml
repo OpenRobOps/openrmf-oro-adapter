@@ -44,6 +44,21 @@ rmf_fleet:
           orientation: 0.0
         charger:
           waypoint: "spawn_robot1"
+    andino2:
+      robot_config:
+        max_delay: 15.0
+        # ORO-specific configuration parameters
+        robot_id: "620918334"
+        battery_attribute_id: "evwkT2VZ9LLP1-bc"
+        map_attribute_id: "rosMasterStatus"
+      rmf_config:
+        robot_state_update_frequency: 0.5
+        start:
+          map_name: "L1"
+          waypoint: "spawn_robot2"
+          orientation: 0.0
+        charger:
+          waypoint: "spawn_robot2"
 
 fleet_manager:
   # prefix: "https://api.inorbit.ai/"
