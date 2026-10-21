@@ -1,0 +1,18 @@
+# Dependabot version updates: monthly, grouped so each ecosystem yields one PR for
+# minor and patch bumps; major bumps come as separate PRs.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: pip
+    directory: /oro_fleet_adapter
+    schedule:
+      interval: monthly
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
